@@ -1,5 +1,17 @@
-import React from 'react';
+import Navbar from "../../components/Navbar";
 
-export default function Support() {
-  return <div>Support tickets</div>;
-}
+const Support: React.FC = () => {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <section className="pt-32 px-4 container mx-auto">
+        <h1 className="text-3xl font-bold mb-6">Поддержка</h1>
+        <div className="bg-white rounded-3xl shadow p-6">
+          <p>Здесь будет форма обращения в поддержку.</p>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default Support;

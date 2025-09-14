@@ -1,20 +1,37 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Index from './pages/index';
-import Pricing from './pages/pricing';
-import Login from './pages/login';
-import Dashboard from './pages/dashboard/index';
-import './styles/tailwind.css';
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import Home from "./pages/index";
+import Login from "./pages/login";
+import Register from "./pages/register";
+import Dashboard from "./pages/dashboard";
 
-export default function App() {
+function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/pricing" element={<Pricing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/dashboard/*" element={<Dashboard />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <Router>
+        <div className="flex flex-col min-h-screen">
+          {/* Навигация сверху */}
+          <Navbar />
+
+          {/* Основной контент */}
+          <main className="flex-grow">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/dashboard/*" element={<Dashboard />} />
+            </Routes>
+          </main>
+
+          {/* Подвал */}
+          <Footer />
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
+
+export default App;
