@@ -1,5 +1,5 @@
-import React from 'react';
+const Servers: React.FC = () => {
+  return <div>Здесь будут ваши VPS</div>;
+};
 
-export default function Servers() {
-  return <div>Your VPS servers list</div>;
-}
+export default Servers;

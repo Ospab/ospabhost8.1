@@ -1,23 +1,47 @@
-import React from 'react';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
-import Button from '../components/Button';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-export default function Login() {
+interface LoginProps {
+  login: (email: string) => void;
+}
+
+const Login: React.FC<LoginProps> = ({ login }) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const navigate = useNavigate();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    login(email);
+    navigate("/dashboard");
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <Navbar />
-
-      <main className="flex-grow flex items-center justify-center px-6">
-        <div className="bg-white shadow-lg rounded-xl p-8 w-full max-w-md">
-          <h1 className="text-2xl font-bold mb-6 text-center">Login</h1>
-          <input className="border p-3 w-full mb-4 rounded-lg" placeholder="Email" />
-          <input className="border p-3 w-full mb-6 rounded-lg" placeholder="Password" type="password"/>
-          <Button>Login</Button>
-        </div>
-      </main>
-
-      <Footer />
+    <div className="max-w-md mx-auto mt-20 p-6 bg-gray-800 text-white rounded">
+      <h1 className="text-2xl font-bold mb-4">Вход</h1>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full p-2 rounded text-black"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Пароль"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full p-2 rounded text-black"
+          required
+        />
+        <button className="w-full bg-blue-600 py-2 rounded font-bold hover:bg-blue-700">
+          Войти
+        </button>
+      </form>
     </div>
   );
-}
+};
+
+export default Login;

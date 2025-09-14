@@ -1,9 +1,9 @@
-import React from 'react';
-
-export default function Footer() {
+const Footer: React.FC = () => {
   return (
-    <footer className="bg-gray-900 text-gray-400 py-6 text-center mt-10">
-      <p>© {new Date().getFullYear()} ospab.host — All rights reserved</p>
+    <footer className="bg-gray-900 text-white p-4 text-center">
+      © {new Date().getFullYear()} osapab.host. Все права защищены.
     </footer>
   );
-}
+};
+
+export default Footer;

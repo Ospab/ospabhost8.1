@@ -1,28 +1,25 @@
-import React from 'react';
-import Navbar from '../../components/Navbar';
-import Footer from '../../components/Footer';
-import Button from '../../components/Button';
+import { Link, Routes, Route } from "react-router-dom";
+import Servers from "./servers";
+import Billing from "./billing";
+import Support from "./support";
 
-export default function Index() {
+const Dashboard: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <Navbar />
-
-      <main className="flex-grow flex flex-col items-center justify-center text-center px-6">
-        <h1 className="text-5xl font-extrabold text-gray-900 mb-6">
-          Next-Gen VPS Hosting
-        </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mb-8">
-          Deploy and manage virtual servers with ease. Powered by DigitalOcean and AWS.
-        </p>
-        <div className="space-x-4">
-          <Button>Get Started</Button>
-          {/* Для поддержки variant="secondary" нужно доработать компонент Button */}
-          <Button>View Pricing</Button>
-        </div>
-      </main>
-
-      <Footer />
+    <div>
+      <h1 className="text-3xl font-bold mb-4">Личный кабинет</h1>
+      <div className="flex space-x-4 mb-4">
+        <Link className="underline" to="servers">Сервера</Link>
+        <Link className="underline" to="billing">Биллинг</Link>
+        <Link className="underline" to="support">Поддержка</Link>
+      </div>
+      <Routes>
+        <Route path="servers" element={<Servers />} />
+        <Route path="billing" element={<Billing />} />
+        <Route path="support" element={<Support />} />
+        <Route path="/" element={<div>Выберите раздел</div>} />
+      </Routes>
     </div>
   );
-}
+};
+
+export default Dashboard;

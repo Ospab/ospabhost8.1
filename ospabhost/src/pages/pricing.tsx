@@ -5,17 +5,17 @@ import Button from '../components/Button';
 
 export default function Pricing() {
   const plans = [
-    { name: "Basic", price: "$5/mo", features: ["1 vCPU", "1GB RAM", "25GB SSD"] },
-    { name: "Standard", price: "$10/mo", features: ["2 vCPU", "2GB RAM", "50GB SSD"] },
-    { name: "Pro", price: "$20/mo", features: ["4 vCPU", "8GB RAM", "100GB SSD"] },
+    { name: "Мини", price: "200 р/мес", features: ["1 vCPU", "1GB RAM", "25GB SSD"] },
+    { name: "Стандарт", price: "500 р/мес", features: ["2 vCPU", "2GB RAM", "50GB SSD"] },
+    { name: "Профессионал", price: "700 р/мес", features: ["4 vCPU", "8GB RAM", "100GB SSD"] },
   ];
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <Navbar />
+  <Navbar user={null} logout={() => {}} />
 
       <main className="flex-grow px-6 py-12 text-center">
-        <h1 className="text-4xl font-bold mb-6">Choose Your Plan</h1>
+        <h1 className="text-4xl font-bold mb-6">Выбери свой тариф</h1>
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {plans.map(plan => (
             <div key={plan.name} className="bg-white shadow-md rounded-xl p-6 hover:shadow-xl transition">
@@ -24,7 +24,7 @@ export default function Pricing() {
               <ul className="text-gray-600 mb-6 space-y-2">
                 {plan.features.map(f => <li key={f}>✅ {f}</li>)}
               </ul>
-              <Button>Get {plan.name}</Button>
+              <Button>Заказать</Button>
             </div>
           ))}
         </div>
