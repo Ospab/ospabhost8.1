@@ -1,8 +1,10 @@
 {
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.4.0",
     "assert": "^2.1.0",
     "autoprefixer": "^10.4.21",
     "browserify-zlib": "^0.2.0",
@@ -13,11 +15,13 @@
     "process": "^0.11.10",
     "stream-browserify": "^3.0.0",
     "tailwindcss": "^4.1.13",
+    "typescript": "^5.9.2",
     "util": "^0.12.5"
   },
   "dependencies": {
     "@prisma/client": "^6.16.1",
     "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
