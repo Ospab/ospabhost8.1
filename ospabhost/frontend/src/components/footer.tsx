@@ -1,0 +1,49 @@
+import { Link } from 'react-router-dom';
+
+const Footer = () => {
+  const currentYear = new Date().getFullYear();
+
+  return (
+    <footer className="bg-gray-800 text-white py-12">
+      <div className="container mx-auto px-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+          {/* About Section */}
+          <div>
+            <h3 className="text-xl font-bold mb-4">О нас</h3>
+            <p className="text-sm text-gray-400">
+              ospab.host - это надежный хостинг для ваших проектов. Мы предлагаем высокую производительность и круглосуточную поддержку.
+            </p>
+          </div>
+
+          {/* Quick Links */}
+          <div>
+            <h3 className="text-xl font-bold mb-4">Навигация</h3>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/" className="text-gray-400 hover:text-white transition-colors">Главная</Link></li>
+              <li><Link to="/tariffs" className="text-gray-400 hover:text-white transition-colors">Тарифы</Link></li>
+              <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors">О нас</Link></li>
+              <li><Link to="/login" className="text-gray-400 hover:text-white transition-colors">Войти</Link></li>
+            </ul>
+          </div>
+
+          {/* Legal Documents */}
+          <div>
+            <h3 className="text-xl font-bold mb-4">Документы</h3>
+            <ul className="space-y-2 text-sm">
+              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Политика конфиденциальности</a></li>
+              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Условия использования</a></li>
+            </ul>
+          </div>
+        </div>
+        
+        <div className="mt-8 pt-8 border-t border-gray-700 text-center">
+          <p className="text-sm text-gray-400">
+            &copy; {currentYear} ospab.host. Все права защищены.
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+export default Footer;

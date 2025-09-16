@@ -10,7 +10,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'любая_секретная_ст
 
 export const register = async (req: Request, res: Response) => {
   try {
-  const { name, email, password } = req.body;
+    const { username, email, password } = req.body as Partial<{ username: string; email: string; password: string }>;
+
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'Необходимо указать username, email и password' });
+    }
 
     // Проверка, есть ли уже пользователь с таким email
   const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -25,21 +29,21 @@ export const register = async (req: Request, res: Response) => {
     // Создание нового пользователя в базе данных
     const newUser = await prisma.user.create({
       data: {
-        name,
+        username,
         email,
         password: hashedPassword,
       },
     });
 
     // Генерация JWT токена
-    const token = jwt.sign({ id: newUser.id }, JWT_SECRET, { expiresIn: '1h' });
+  const token = jwt.sign({ id: newUser.id }, JWT_SECRET, { expiresIn: '1h' });
 
     res.status(201).json({
       message: 'Регистрация прошла успешно!',
       token,
       user: {
         id: newUser.id,
-        name: newUser.name,
+        username: newUser.username,
         email: newUser.email,
       },
     });
@@ -52,7 +56,10 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body as Partial<{ email: string; password: string }>;
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Необходимо указать email и password' });
+    }
 
     // Поиск пользователя по email
     const user = await prisma.user.findUnique({ where: { email } });
@@ -61,7 +68,7 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Проверка пароля
-    const isMatch = await bcrypt.compare(password, user.password);
+  const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Неверный email или пароль' });
     }
@@ -74,7 +81,7 @@ export const login = async (req: Request, res: Response) => {
       token,
       user: {
         id: user.id,
-        name: user.name,
+        username: user.username,
         email: user.email,
       },
     });
@@ -85,17 +92,22 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const getMe = async (req: Request, res: Response) => {
+type AuthRequest = Request & { userId?: number };
+
+export const getMe = async (req: AuthRequest, res: Response) => {
   try {
-    // ID пользователя будет добавлен в req.user.id мидлваром
-    const userId = (req as any).userId; 
+    // ID пользователя будет добавлен мидлваром
+    const userId = req.userId; 
+    if (!userId) {
+      return res.status(401).json({ message: 'Не авторизован' });
+    }
     
     // Получение пользователя из базы данных, исключая пароль
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
-        name: true,
+        username: true,
         email: true,
         createdAt: true,
       },

@@ -1,75 +1,69 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage('');
-
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+      const response = await axios.post('http://localhost:5000/api/auth/login', {
+        email: email,
+        password: password,
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage(data.message);
-        localStorage.setItem('token', data.token);
-        navigate('/dashboard'); // Перенаправляем на дашборд после успешного входа
-      } else {
-        setMessage(data.message || 'Ошибка входа. Проверьте email и пароль.');
-      }
+      // Сохраняем токен в localStorage
+      localStorage.setItem('access_token', response.data.token);
+      localStorage.setItem('isLoggedIn', 'true');
+      console.log('Успешный вход:', response.data);
+      navigate('/dashboard'); // Перенаправляем на личный кабинет
     } catch (error) {
-      console.error('Ошибка:', error);
-      setMessage('Не удалось подключиться к серверу.');
+      let errMsg = 'Ошибка входа. Проверьте правильность email и пароля.';
+      if (axios.isAxiosError(error)) {
+        errMsg = error.response?.data?.message || errMsg;
+        console.error('Ошибка входа:', error.response?.data || error.message);
+      } else {
+        console.error('Ошибка входа:', error);
+      }
+      alert(errMsg);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <h1 className="text-3xl font-bold mb-4">Вход</h1>
-      <form onSubmit={handleLogin} className="bg-white p-8 rounded-lg shadow-md w-96">
-        <div className="mb-4">
-          <label className="block text-gray-700">Email</label>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="bg-white p-8 md:p-10 rounded-3xl shadow-2xl w-full max-w-md text-center">
+        <h1 className="text-3xl font-bold text-gray-800 mb-6">Вход в аккаунт</h1>
+        <form onSubmit={handleLogin}>
           <input
             type="email"
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            required
+            placeholder="Электронная почта"
+            className="w-full px-5 py-3 mb-4 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-ospab-primary"
           />
-        </div>
-        <div className="mb-6">
-          <label className="block text-gray-700">Пароль</label>
           <input
             type="password"
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            required
+            placeholder="Пароль"
+            className="w-full px-5 py-3 mb-6 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-ospab-primary"
           />
-        </div>
-        <button
-          type="submit"
-          className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition-colors"
-        >
-          Войти
-        </button>
-      </form>
-      {message && <p className="mt-4 text-center text-red-500">{message}</p>}
-      <p className="mt-4">
-        Нет аккаунта? <a href="/register" className="text-blue-500 hover:underline">Зарегистрироваться</a>
-      </p>
+          <button
+            type="submit"
+            className="w-full px-5 py-3 rounded-full text-white font-bold transition-colors transform hover:scale-105 bg-ospab-primary hover:bg-ospab-accent"
+          >
+            Войти
+          </button>
+        </form>
+        <p className="mt-6 text-gray-600">
+          Нет аккаунта?{' '}
+          <Link to="/register" className="text-ospab-primary font-bold hover:underline">
+            Зарегистрироваться
+          </Link>
+        </p>
+      </div>
     </div>
   );
 };
