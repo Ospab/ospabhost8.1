@@ -1,33 +1,34 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import useAuth from '../context/useAuth';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    
     try {
       const response = await axios.post('http://localhost:5000/api/auth/login', {
         email: email,
         password: password,
       });
-      // Сохраняем токен в localStorage
-      localStorage.setItem('access_token', response.data.token);
-      localStorage.setItem('isLoggedIn', 'true');
-      console.log('Успешный вход:', response.data);
-      navigate('/dashboard'); // Перенаправляем на личный кабинет
-    } catch (error) {
-      let errMsg = 'Ошибка входа. Проверьте правильность email и пароля.';
-      if (axios.isAxiosError(error)) {
-        errMsg = error.response?.data?.message || errMsg;
-        console.error('Ошибка входа:', error.response?.data || error.message);
+      
+      login(response.data.token);
+      navigate('/dashboard/mainpage');
+      
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response) {
+        setError(err.response.data.message || 'Неизвестная ошибка входа.');
       } else {
-        console.error('Ошибка входа:', error);
+        setError('Произошла ошибка сети. Пожалуйста, попробуйте позже.');
       }
-      alert(errMsg);
     }
   };
 
@@ -57,6 +58,9 @@ const LoginPage = () => {
             Войти
           </button>
         </form>
+        {error && (
+          <p className="mt-4 text-sm text-red-500">{error}</p>
+        )}
         <p className="mt-6 text-gray-600">
           Нет аккаунта?{' '}
           <Link to="/register" className="text-ospab-primary font-bold hover:underline">

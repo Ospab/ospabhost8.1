@@ -6,27 +6,30 @@ const RegisterPage = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(''); // Очищаем предыдущие ошибки
+    
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/register', {
+      await axios.post('http://localhost:5000/api/auth/register', {
         username: username,
         email: email,
         password: password
       });
-      console.log('Успешная регистрация:', response.data);
-      navigate('/login'); // Перенаправляем пользователя на страницу входа
-    } catch (error) {
-      let errMsg = 'Ошибка регистрации. Пожалуйста, попробуйте снова.';
-      if (axios.isAxiosError(error)) {
-        errMsg = error.response?.data?.message || errMsg;
-        console.error('Ошибка регистрации:', error.response?.data || error.message);
+      
+      alert('Регистрация прошла успешно! Теперь вы можете войти.');
+      navigate('/login');
+      
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response) {
+        const errorMsg = err.response.data.message || 'Неизвестная ошибка регистрации.';
+        setError(errorMsg);
       } else {
-        console.error('Ошибка регистрации:', error);
+        setError('Произошла ошибка сети. Пожалуйста, попробуйте позже.');
       }
-      alert(errMsg);
     }
   };
 
@@ -63,6 +66,9 @@ const RegisterPage = () => {
             Зарегистрироваться
           </button>
         </form>
+        {error && (
+          <p className="mt-4 text-sm text-red-500">{error}</p>
+        )}
         <p className="mt-6 text-gray-600">
           Уже есть аккаунт?{' '}
           <Link to="/login" className="text-ospab-primary font-bold hover:underline">

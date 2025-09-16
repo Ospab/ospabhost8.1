@@ -16,12 +16,26 @@ model User {
   email     String   @unique
   password  String
   createdAt DateTime @default(now())
+  plans     Plan[]
+  operator  Int      @default(0) // Добавляем новую колонку operator
 }
 
-// Пока что у тебя нет других моделей, но ты можешь
-// добавить их сюда позже, например:
-// model Plan {
-//   id        Int      @id @default(autoincrement())
-//   name      String   @unique
-//   price     Float
-// }
+model Plan {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  price       Float
+  description String?
+  isCustom    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  userId      Int
+  owner       User      @relation(fields: [userId], references: [id])
+  services    Service[]
+}
+
+model Service {
+  id      Int     @id @default(autoincrement())
+  name    String  @unique
+  price   Float
+  planId  Int?
+  plan    Plan?   @relation(fields: [planId], references: [id])
+}

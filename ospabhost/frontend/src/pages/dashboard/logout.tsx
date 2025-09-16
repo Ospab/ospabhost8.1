@@ -6,9 +6,8 @@ const LogoutPage = () => {
 
   useEffect(() => {
     // Удаляем все токены и флаг входа из localStorage
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('isLoggedIn');
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
     console.log('Выполняется выход из системы...');
     // После выхода перенаправляем пользователя на главную страницу
     navigate('/');
