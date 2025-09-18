@@ -60,16 +60,42 @@ const Checkout: React.FC<CheckoutProps> = ({ onSuccess }) => {
     setLoading(true);
     setError('');
     try {
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
       console.log('Покупка сервера:', { tariffId: selectedTariff, osId: selectedOs });
       const res = await axios.post('http://localhost:5000/api/server/create', {
         tariffId: selectedTariff,
         osId: selectedOs,
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        withCredentials: true,
       });
-      console.log('Ответ сервера:', res.data);
+      if (res.data && res.data.error === 'Недостаточно средств на балансе') {
+        setError('Недостаточно средств на балансе. Пополните баланс и попробуйте снова.');
+        setLoading(false);
+        return;
+      }
+      // После успешной покупки обновляем userData
+      try {
+        const userRes = await axios.get('http://localhost:5000/api/auth/me', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        window.dispatchEvent(new CustomEvent('userDataUpdate', {
+          detail: {
+            user: userRes.data.user,
+            balance: userRes.data.user.balance ?? 0,
+            servers: userRes.data.user.servers ?? [],
+            tickets: userRes.data.user.tickets ?? [],
+          }
+        }));
+      } catch (err) {
+        console.error('Ошибка обновления userData после покупки:', err);
+      }
       onSuccess();
     } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.data?.error === 'Недостаточно средств на балансе') {
+        setError('Недостаточно средств на балансе. Пополните баланс и попробуйте снова.');
+      } else {
+        setError('Ошибка покупки сервера');
+      }
       console.error('Ошибка покупки сервера:', err);
-      setError('Ошибка покупки сервера');
     }
     setLoading(false);
   };

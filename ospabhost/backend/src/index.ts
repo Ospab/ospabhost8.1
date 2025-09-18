@@ -29,10 +29,23 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/', (req, res) => {
-  res.json({ 
+import { checkProxmoxConnection } from './modules/server/proxmoxApi';
+
+app.get('/', async (req, res) => {
+  // Проверка соединения с Proxmox
+  let proxmoxStatus;
+  try {
+    proxmoxStatus = await checkProxmoxConnection();
+  } catch (err) {
+    proxmoxStatus = { status: 'fail', message: 'Ошибка проверки Proxmox', error: err };
+  }
+
+  res.json({
     message: 'Сервер ospab.host запущен!',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    port: PORT,
+    database: process.env.DATABASE_URL ? 'подключена' : 'НЕ НАСТРОЕНА',
+    proxmox: proxmoxStatus
   });
 });
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import useAuth from '../context/useAuth';
@@ -10,27 +10,30 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, isLoggedIn } = useAuth();
+
+  // Если уже авторизован — редирект на dashboard
+  useEffect(() => {
+    if (isLoggedIn) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isLoggedIn, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-    
     try {
       const response = await axios.post('http://localhost:5000/api/auth/login', {
         email: email,
         password: password,
       });
-      
-  localStorage.setItem('token', response.data.token);
-  login(response.data.token);
-  // Возврат на исходную страницу, если был редирект
-  type LocationState = { from?: { pathname?: string } };
-  const state = location.state as LocationState | null;
-  const from = state?.from?.pathname || '/dashboard';
-  navigate(from);
-      
+      login(response.data.token);
+      // Возврат на исходную страницу, если был редирект
+      type LocationState = { from?: { pathname?: string } };
+      const state = location.state as LocationState | null;
+      const from = state?.from?.pathname || '/dashboard';
+      navigate(from);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
         setError(err.response.data.message || 'Неизвестная ошибка входа.');

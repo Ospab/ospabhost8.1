@@ -7,7 +7,8 @@ import { useContext } from 'react';
 
 // Импортируем компоненты для вкладок
 import Summary from './summary';
-import ServerManagementPage from './servermanagement';
+import Servers from './servers';
+import ServerPanel from './serverpanel';
 import TicketsPage from './tickets';
 import Billing from './billing';
 import Settings from './settings';
@@ -109,11 +110,23 @@ const Dashboard = () => {
     );
   }
 
+  // Вкладки для сайдбара
+  const tabs = [
+    { key: 'summary', label: 'Сводка', to: '/dashboard' },
+    { key: 'servers', label: 'Серверы', to: '/dashboard/servers' },
+    { key: 'tickets', label: 'Тикеты', to: '/dashboard/tickets' },
+    { key: 'billing', label: 'Баланс', to: '/dashboard/billing' },
+    { key: 'settings', label: 'Настройки', to: '/dashboard/settings' },
+  ];
+  const adminTabs = [
+    { key: 'checkverification', label: 'Проверка чеков', to: '/dashboard/checkverification' },
+    { key: 'ticketresponse', label: 'Ответы на тикеты', to: '/dashboard/ticketresponse' },
+  ];
+
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar - фиксированный слева */}
+      {/* Sidebar */}
       <div className="w-64 bg-white shadow-xl flex flex-col">
-        {/* Заголовок сайдбара */}
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-800">
             Привет, {userData?.user?.username || 'Гость'}!
@@ -127,122 +140,68 @@ const Dashboard = () => {
             Баланс: <span className="font-semibold text-ospab-primary">₽{userData?.balance ?? 0}</span>
           </div>
         </div>
-        
-        {/* Навигация */}
         <nav className="flex-1 p-6">
           <div className="space-y-1">
-            <Link 
-              to="/dashboard" 
-              className={`flex items-center py-3 px-4 rounded-xl font-semibold transition-colors duration-200 ${
-                activeTab === 'summary' ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Сводка
-            </Link>
-            <Link 
-              to="/dashboard/servers" 
-              className={`flex items-center py-3 px-4 rounded-xl font-semibold transition-colors duration-200 ${
-                activeTab === 'servers' ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Серверы
-            </Link>
-            <Link 
-              to="/dashboard/tickets" 
-              className={`flex items-center py-3 px-4 rounded-xl font-semibold transition-colors duration-200 ${
-                activeTab === 'tickets' ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Тикеты
-            </Link>
-            <Link 
-              to="/dashboard/billing" 
-              className={`flex items-center py-3 px-4 rounded-xl font-semibold transition-colors duration-200 ${
-                activeTab === 'billing' ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Пополнить баланс
-            </Link>
-            <Link 
-              to="/dashboard/settings" 
-              className={`flex items-center py-3 px-4 rounded-xl font-semibold transition-colors duration-200 ${
-                activeTab === 'settings' ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Настройки
-            </Link>
+            {tabs.map(tab => (
+              <Link
+                key={tab.key}
+                to={tab.to}
+                className={`flex items-center py-3 px-4 rounded-xl font-semibold transition-colors duration-200 ${
+                  activeTab === tab.key ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                {tab.label}
+              </Link>
+            ))}
           </div>
-          
           {isOperator && (
             <div className="mt-8 pt-6 border-t border-gray-200">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 px-4">
                 Админ панель
               </p>
               <div className="space-y-1">
-                <Link 
-                  to="/dashboard/checkverification" 
-                  className={`flex items-center py-3 px-4 rounded-xl font-semibold transition-colors duration-200 ${
-                    activeTab === 'checkverification' ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  Проверка чеков
-                </Link>
-                <Link 
-                  to="/dashboard/ticketresponse" 
-                  className={`flex items-center py-3 px-4 rounded-xl font-semibold transition-colors duration-200 ${
-                    activeTab === 'ticketresponse' ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  Ответы на тикеты
-                </Link>
+                {adminTabs.map(tab => (
+                  <Link
+                    key={tab.key}
+                    to={tab.to}
+                    className={`flex items-center py-3 px-4 rounded-xl font-semibold transition-colors duration-200 ${
+                      activeTab === tab.key ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {tab.label}
+                  </Link>
+                ))}
               </div>
             </div>
           )}
         </nav>
-
-        {/* Футер сайдбара */}
-        <div className="p-6 border-t border-gray-200">
-          <div className="text-xs text-gray-500 text-center">
-            <p>&copy; 2024 ospab.host</p>
-            <p className="mt-1">Версия 1.0.0</p>
-          </div>
+        <div className="p-6 border-t border-gray-200 text-xs text-gray-500 text-center">
+          <p>&copy; 2025 ospab.host</p>
+          <p className="mt-1">Версия 1.0.0</p>
         </div>
       </div>
 
-      {/* Main Content - занимает оставшееся место */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Хлебные крошки/заголовок */}
         <div className="bg-white border-b border-gray-200 px-8 py-4">
-          <div className="flex items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 capitalize">
-                {activeTab === 'summary' ? 'Сводка' : 
-                 activeTab === 'servers' ? 'Серверы' :
-                 activeTab === 'tickets' ? 'Тикеты поддержки' :
-                 activeTab === 'billing' ? 'Пополнение баланса' :
-                 activeTab === 'settings' ? 'Настройки аккаунта' :
-                 activeTab === 'checkverification' ? 'Проверка чеков' :
-                 activeTab === 'ticketresponse' ? 'Ответы на тикеты' :
-                 'Панель управления'}
-              </h1>
-              <p className="text-sm text-gray-600 mt-1">
-                {new Date().toLocaleDateString('ru-RU', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
-              </p>
-            </div>
-          </div>
+          <h1 className="text-2xl font-bold text-gray-900 capitalize">
+            {tabs.concat(adminTabs).find(t => t.key === activeTab)?.label || 'Панель управления'}
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">
+            {new Date().toLocaleDateString('ru-RU', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </p>
         </div>
-
-        {/* Контент страницы */}
         <div className="flex-1 p-8">
           <Routes>
             <Route path="/" element={<Summary userData={userData ?? { user: { username: '', operator: 0 }, balance: 0, servers: [], tickets: [] }} />} />
-      <Route path="servers" element={<ServerManagementPage />} />
-            <Route path="checkout" element={<Checkout onSuccess={() => window.location.reload()} />} />
+            <Route path="servers" element={<Servers />} />
+            <Route path="server/:id" element={<ServerPanel />} />
+            <Route path="checkout" element={<Checkout onSuccess={() => navigate('/dashboard/servers')} />} />
             <Route path="tariffs" element={<TariffsPage />} />
             {userData && (
               <Route path="tickets" element={<TicketsPage setUserData={setUserData} />} />
@@ -251,7 +210,6 @@ const Dashboard = () => {
               <Route path="billing" element={<Billing />} />
             )}
             <Route path="settings" element={<Settings />} />
-            
             {isOperator && (
               <>
                 <Route path="checkverification" element={<CheckVerification />} />

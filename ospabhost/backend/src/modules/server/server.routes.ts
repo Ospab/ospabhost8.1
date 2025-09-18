@@ -1,16 +1,23 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
-// import { createProxmoxContainer } from '../../proxmox/proxmoxApi'; // если есть интеграция
+import { authMiddleware } from '../auth/auth.middleware';
+import { checkProxmoxConnection, createProxmoxContainer } from './proxmoxApi';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// POST /api/server/create — создать сервер (контейнер)
+router.use(authMiddleware);
+
+router.get('/proxmox-status', async (req, res) => {
+  const status = await checkProxmoxConnection();
+  res.json(status);
+});
 router.post('/create', async (req, res) => {
   try {
     const { tariffId, osId } = req.body;
-    // TODO: получить userId из авторизации (req.user)
-    const userId = 1; // временно, заменить на реального пользователя
+    // Получаем userId из авторизации
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Нет авторизации' });
 
     // Получаем тариф и ОС
     const tariff = await prisma.tariff.findUnique({ where: { id: tariffId } });
@@ -19,30 +26,52 @@ router.post('/create', async (req, res) => {
       return res.status(400).json({ error: 'Тариф или ОС не найдены' });
     }
 
-    // TODO: интеграция с Proxmox для создания контейнера
-    // Если интеграция с Proxmox есть, то только при успешном создании контейнера создавать запись в БД
-    // Например:
-    // let proxmoxResult;
-    // try {
-    //   proxmoxResult = await createProxmoxContainer({ ... });
-    // } catch (proxmoxErr) {
-    //   console.error('Ошибка Proxmox:', proxmoxErr);
-    //   return res.status(500).json({ error: 'Ошибка создания контейнера на Proxmox' });
-    // }
+    // Проверяем баланс пользователя
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+    if (user.balance < tariff.price) {
+      return res.status(400).json({ error: 'Недостаточно средств на балансе' });
+    }
 
-    // Если всё успешно — создаём запись сервера в БД
+    // 1. Создаём сервер на Proxmox
+    let proxmoxResult;
+    try {
+      proxmoxResult = await createProxmoxContainer({ os, tariff, user });
+    } catch (proxmoxErr) {
+      console.error('Ошибка Proxmox:', proxmoxErr);
+      return res.status(500).json({ error: 'Ошибка создания сервера на Proxmox', details: proxmoxErr });
+    }
+    if (!proxmoxResult || proxmoxResult.status !== 'ok') {
+      return res.status(500).json({ error: 'Сервер не создан на Proxmox', details: proxmoxResult });
+    }
+
+    // 2. Списываем средства
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        balance: {
+          decrement: tariff.price
+        }
+      }
+    });
+
+    // 3. Создаём запись о сервере в БД
+    const node = process.env.PROXMOX_NODE;
+    const diskTemplate = process.env.PROXMOX_DISK_TEMPLATE;
     const server = await prisma.server.create({
       data: {
         userId,
         tariffId,
         osId,
-        status: 'creating',
+        status: 'active',
+        node,
+        diskTemplate,
+        proxmoxId: proxmoxResult.proxmoxId || null,
       },
     });
     res.json({ success: true, server });
   } catch (err) {
     console.error('Ошибка создания сервера:', err);
-    // Не создавать сервер, если есть ошибка
     return res.status(500).json({ error: 'Ошибка создания сервера' });
   }
 });
@@ -64,6 +93,24 @@ router.get('/', async (req, res) => {
   } catch (err) {
     console.error('Ошибка получения серверов:', err);
     res.status(500).json({ error: 'Ошибка получения серверов' });
+  }
+});
+
+// GET /api/server/:id — получить один сервер пользователя по id
+router.get('/:id', async (req, res) => {
+  try {
+    // TODO: получить userId из авторизации (req.user)
+    const userId = 1; // временно
+    const serverId = Number(req.params.id);
+    const server = await prisma.server.findFirst({
+      where: { id: serverId, userId },
+      include: { os: true, tariff: true },
+    });
+    if (!server) return res.status(404).json({ error: 'Сервер не найден' });
+    res.json(server);
+  } catch (err) {
+    console.error('Ошибка получения сервера:', err);
+    res.status(500).json({ error: 'Ошибка получения сервера' });
   }
 });
 
