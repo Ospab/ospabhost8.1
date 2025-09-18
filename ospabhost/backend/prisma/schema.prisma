@@ -39,3 +39,26 @@ model Service {
   planId  Int?
   plan    Plan?   @relation(fields: [planId], references: [id])
 }
+
+model Ticket {
+  id         Int        @id @default(autoincrement())
+  title      String
+  message    String
+  userId     Int
+  status     String     @default("open")
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  responses  Response[] // связь
+
+  // Если нужна связь с User:
+  // user       User      @relation(fields: [userId], references: [id])
+}
+
+model Response {
+  id         Int      @id @default(autoincrement())
+  ticketId   Int
+  operatorId Int
+  message    String
+  createdAt  DateTime @default(now())
+  ticket     Ticket   @relation(fields: [ticketId], references: [id]) // <-- обратная связь
+}
