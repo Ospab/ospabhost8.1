@@ -1,4 +1,3 @@
-// This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
@@ -10,14 +9,61 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// This is your Prisma schema file,
+model Tariff {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  price       Float
+  description String?
+  createdAt   DateTime @default(now())
+  servers     Server[]
+}
+
+model OperatingSystem {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  type        String   // linux, windows, etc
+  template    String?  // путь к шаблону для контейнера
+  createdAt   DateTime @default(now())
+  servers     Server[]
+}
+
+model Server {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  tariffId    Int
+  osId        Int
+  status      String   @default("stopped") // running, stopped, etc
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+  tariff      Tariff   @relation(fields: [tariffId], references: [id])
+  os          OperatingSystem @relation(fields: [osId], references: [id])
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   username  String
   email     String   @unique
   password  String
   createdAt DateTime @default(now())
-  plans     Plan[]
-  operator  Int      @default(0) // Добавляем новую колонку operator
+  plans     Plan[] @relation("UserPlans")
+  operator  Int      @default(0)
+  tickets   Ticket[] @relation("UserTickets")
+  responses Response[] @relation("OperatorResponses")
+  checks    Check[]  @relation("UserChecks")
+  balance   Float  @default(0)
+  servers   Server[]
+}
+
+model Check {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  amount    Float
+  status    String   @default("pending") // pending, approved, rejected
+  fileUrl   String
+  createdAt DateTime @default(now())
+  user      User     @relation("UserChecks", fields: [userId], references: [id])
 }
 
 model Plan {
@@ -28,8 +74,8 @@ model Plan {
   isCustom    Boolean   @default(false)
   createdAt   DateTime  @default(now())
   userId      Int
-  owner       User      @relation(fields: [userId], references: [id])
-  services    Service[]
+  owner       User      @relation("UserPlans", fields: [userId], references: [id])
+  services    Service[] @relation("PlanServices")
 }
 
 model Service {
@@ -37,7 +83,7 @@ model Service {
   name    String  @unique
   price   Float
   planId  Int?
-  plan    Plan?   @relation(fields: [planId], references: [id])
+  plan    Plan?   @relation("PlanServices", fields: [planId], references: [id])
 }
 
 model Ticket {
@@ -48,10 +94,8 @@ model Ticket {
   status     String     @default("open")
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
-  responses  Response[] // связь
-
-  // Если нужна связь с User:
-  // user       User      @relation(fields: [userId], references: [id])
+  responses  Response[] @relation("TicketResponses")
+  user       User?      @relation("UserTickets", fields: [userId], references: [id])
 }
 
 model Response {
@@ -60,5 +104,6 @@ model Response {
   operatorId Int
   message    String
   createdAt  DateTime @default(now())
-  ticket     Ticket   @relation(fields: [ticketId], references: [id]) // <-- обратная связь
+  ticket     Ticket   @relation("TicketResponses", fields: [ticketId], references: [id])
+  operator   User     @relation("OperatorResponses", fields: [operatorId], references: [id])
 }

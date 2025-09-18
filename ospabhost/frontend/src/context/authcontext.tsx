@@ -2,8 +2,12 @@
 import { createContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 
+import type { UserData } from '../pages/dashboard/types';
+
 interface AuthContextType {
   isLoggedIn: boolean;
+  userData: UserData | null;
+  setUserData: (data: UserData | null) => void;
   login: (token: string) => void;
   logout: () => void;
 }
@@ -11,6 +15,8 @@ interface AuthContextType {
 // Создаем контекст с начальными значениями
 const AuthContext = createContext<AuthContextType>({
   isLoggedIn: false,
+  userData: null,
+  setUserData: () => {},
   login: () => {},
   logout: () => {},
 });
@@ -22,11 +28,12 @@ interface AuthProviderProps {
 // Создаем провайдер, который будет управлять состоянием
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
 
-  // Проверяем статус входа при загрузке приложения
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     setIsLoggedIn(!!token);
+    // Можно добавить загрузку userData при наличии токена
   }, []);
 
   const login = (token: string) => {
@@ -37,10 +44,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const logout = () => {
     localStorage.removeItem('access_token');
     setIsLoggedIn(false);
+    setUserData(null);
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, userData, setUserData, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

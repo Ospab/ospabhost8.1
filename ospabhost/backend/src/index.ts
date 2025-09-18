@@ -2,6 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './modules/auth/auth.routes';
+import ticketRoutes from './modules/ticket/ticket.routes';
+import checkRoutes from './modules/check/check.routes';
+import proxmoxRoutes from '../proxmox/proxmox.routes';
+import tariffRoutes from './modules/tariff';
+import osRoutes from './modules/os';
+import serverRoutes from './modules/server';
 
 dotenv.config();
 
@@ -30,7 +36,19 @@ app.get('/', (req, res) => {
   });
 });
 
+
+
+// Статические файлы чеков
+import path from 'path';
+app.use('/uploads/checks', express.static(path.join(__dirname, '../uploads/checks')));
+
 app.use('/api/auth', authRoutes);
+app.use('/api/ticket', ticketRoutes);
+app.use('/api/check', checkRoutes);
+app.use('/api/proxmox', proxmoxRoutes);
+app.use('/api/tariff', tariffRoutes);
+app.use('/api/os', osRoutes);
+app.use('/api/server', serverRoutes);
 
 const PORT = process.env.PORT || 5000;
 

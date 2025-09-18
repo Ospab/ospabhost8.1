@@ -7,16 +7,18 @@ import { useContext } from 'react';
 
 // Импортируем компоненты для вкладок
 import Summary from './summary';
-import Servers from './servers';
-import Tickets from './tickets';
+import ServerManagementPage from './servermanagement';
+import TicketsPage from './tickets';
 import Billing from './billing';
 import Settings from './settings';
 import CheckVerification from './checkverification';
 import TicketResponse from './ticketresponse';
+import Checkout from './checkout';
+import TariffsPage from '../tariffs';
 
 const Dashboard = () => {
   const [userData, setUserData] = useState<import('./types').UserData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useContext(AuthContext);
@@ -44,15 +46,13 @@ const Dashboard = () => {
           navigate('/login');
           return;
         }
-
         const headers = { Authorization: `Bearer ${token}` };
         const userRes = await axios.get('http://localhost:5000/api/auth/me', { headers });
-        
         setUserData({
           user: userRes.data.user,
-          balance: 1500,
-          servers: [],
-          tickets: [],
+          balance: userRes.data.user.balance ?? 0,
+          servers: userRes.data.user.servers ?? [],
+          tickets: userRes.data.user.tickets ?? [],
         });
       } catch (err) {
         console.error('Ошибка загрузки данных:', err);
@@ -67,34 +67,47 @@ const Dashboard = () => {
     fetchData();
   }, [logout, navigate]);
 
+  // Функция для обновления userData из API
+  const updateUserData = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      const headers = { Authorization: `Bearer ${token}` };
+      const userRes = await axios.get('http://localhost:5000/api/auth/me', { headers });
+      setUserData({
+        user: userRes.data.user,
+        balance: userRes.data.user.balance ?? 0,
+        servers: userRes.data.user.servers ?? [],
+        tickets: userRes.data.user.tickets ?? [],
+      });
+    } catch (err) {
+      console.error('Ошибка обновления userData:', err);
+    }
+  };
+
+  useEffect(() => {
+    const handleUserDataUpdate = () => {
+      try {
+        updateUserData();
+      } catch (err) {
+        console.error('Ошибка в обработчике userDataUpdate:', err);
+      }
+    };
+    window.addEventListener('userDataUpdate', handleUserDataUpdate);
+    return () => {
+      window.removeEventListener('userDataUpdate', handleUserDataUpdate);
+    };
+  }, []);
+
+  const isOperator = userData?.user?.operator === 1;
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ospab-primary mx-auto mb-4"></div>
-          <h1 className="text-2xl text-gray-800">Загрузка...</h1>
-        </div>
+      <div className="flex min-h-screen items-center justify-center">
+        <span className="text-gray-500 text-lg">Загрузка...</span>
       </div>
     );
   }
-
-  if (!userData || !userData.user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl text-gray-800 mb-4">Ошибка загрузки данных</h1>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-ospab-primary text-white rounded-lg"
-          >
-            Перезагрузить
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const isOperator = userData.user.operator === 1;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -103,7 +116,7 @@ const Dashboard = () => {
         {/* Заголовок сайдбара */}
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-800">
-            Привет, {userData.user.username}!
+            Привет, {userData?.user?.username || 'Гость'}!
           </h2>
           {isOperator && (
             <span className="inline-block px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full mt-1">
@@ -111,7 +124,7 @@ const Dashboard = () => {
             </span>
           )}
           <div className="mt-2 text-sm text-gray-600">
-            Баланс: <span className="font-semibold text-ospab-primary">₽{userData.balance}</span>
+            Баланс: <span className="font-semibold text-ospab-primary">₽{userData?.balance ?? 0}</span>
           </div>
         </div>
         
@@ -124,7 +137,6 @@ const Dashboard = () => {
                 activeTab === 'summary' ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              <span className="mr-3">📊</span>
               Сводка
             </Link>
             <Link 
@@ -133,7 +145,6 @@ const Dashboard = () => {
                 activeTab === 'servers' ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              <span className="mr-3">🖥️</span>
               Серверы
             </Link>
             <Link 
@@ -142,7 +153,6 @@ const Dashboard = () => {
                 activeTab === 'tickets' ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              <span className="mr-3">🎫</span>
               Тикеты
             </Link>
             <Link 
@@ -151,7 +161,6 @@ const Dashboard = () => {
                 activeTab === 'billing' ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              <span className="mr-3">💳</span>
               Пополнить баланс
             </Link>
             <Link 
@@ -160,7 +169,6 @@ const Dashboard = () => {
                 activeTab === 'settings' ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              <span className="mr-3">⚙️</span>
               Настройки
             </Link>
           </div>
@@ -177,7 +185,6 @@ const Dashboard = () => {
                     activeTab === 'checkverification' ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  <span className="mr-3">✅</span>
                   Проверка чеков
                 </Link>
                 <Link 
@@ -186,7 +193,6 @@ const Dashboard = () => {
                     activeTab === 'ticketresponse' ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  <span className="mr-3">💬</span>
                   Ответы на тикеты
                 </Link>
               </div>
@@ -207,7 +213,7 @@ const Dashboard = () => {
       <div className="flex-1 flex flex-col">
         {/* Хлебные крошки/заголовок */}
         <div className="bg-white border-b border-gray-200 px-8 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 capitalize">
                 {activeTab === 'summary' ? 'Сводка' : 
@@ -228,32 +234,22 @@ const Dashboard = () => {
                 })}
               </p>
             </div>
-            
-            {/* Быстрые действия */}
-            <div className="flex space-x-3">
-              <Link 
-                to="/dashboard/billing" 
-                className="px-4 py-2 bg-green-100 text-green-800 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors"
-              >
-                💰 Пополнить
-              </Link>
-              <Link 
-                to="/dashboard/tickets" 
-                className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
-              >
-                🆘 Поддержка
-              </Link>
-            </div>
           </div>
         </div>
 
         {/* Контент страницы */}
         <div className="flex-1 p-8">
           <Routes>
-            <Route path="/" element={<Summary userData={userData} />} />
-            <Route path="servers" element={<Servers servers={userData.servers} />} />
-            <Route path="tickets" element={<Tickets tickets={userData.tickets} />} />
-            <Route path="billing" element={<Billing />} />
+            <Route path="/" element={<Summary userData={userData ?? { user: { username: '', operator: 0 }, balance: 0, servers: [], tickets: [] }} />} />
+      <Route path="servers" element={<ServerManagementPage />} />
+            <Route path="checkout" element={<Checkout onSuccess={() => window.location.reload()} />} />
+            <Route path="tariffs" element={<TariffsPage />} />
+            {userData && (
+              <Route path="tickets" element={<TicketsPage setUserData={setUserData} />} />
+            )}
+            {userData && (
+              <Route path="billing" element={<Billing />} />
+            )}
             <Route path="settings" element={<Settings />} />
             
             {isOperator && (

@@ -1,13 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
 
-interface AuthRequest extends Request {
-  userId?: number;
-}
-
+const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
 
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -20,9 +18,10 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as { id: number };
-    req.userId = decoded.id;
+    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+    if (!user) return res.status(401).json({ message: 'Пользователь не найден.' });
+    req.user = user;
     next();
-    
   } catch (error) {
     console.error('Ошибка в мидлваре аутентификации:', error);
     if (error instanceof jwt.JsonWebTokenError) {

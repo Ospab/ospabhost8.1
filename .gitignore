@@ -1,0 +1,11 @@
+# Node
+node_modules/
+
+# Env files
+.env
+ospabhost/frontend/.env
+ospabhost/backend/.env
+
+# Build
+/dist
+/build

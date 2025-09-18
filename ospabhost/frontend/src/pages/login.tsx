@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import useAuth from '../context/useAuth';
 
@@ -9,6 +9,7 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -22,9 +23,13 @@ const LoginPage = () => {
         password: password,
       });
       
-      login(response.data.token);
-      // ИСПРАВЛЕНО: правильный путь к дашборду
-      navigate('/dashboard');
+  localStorage.setItem('token', response.data.token);
+  login(response.data.token);
+  // Возврат на исходную страницу, если был редирект
+  type LocationState = { from?: { pathname?: string } };
+  const state = location.state as LocationState | null;
+  const from = state?.from?.pathname || '/dashboard';
+  navigate(from);
       
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
