@@ -7,12 +7,14 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
     
     try {
       const response = await axios.post('http://localhost:5000/api/auth/login', {
@@ -21,7 +23,8 @@ const LoginPage = () => {
       });
       
       login(response.data.token);
-      navigate('/dashboard/mainpage');
+      // ИСПРАВЛЕНО: правильный путь к дашборду
+      navigate('/dashboard');
       
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
@@ -29,6 +32,8 @@ const LoginPage = () => {
       } else {
         setError('Произошла ошибка сети. Пожалуйста, попробуйте позже.');
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -43,6 +48,8 @@ const LoginPage = () => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Электронная почта"
             className="w-full px-5 py-3 mb-4 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-ospab-primary"
+            required
+            disabled={isLoading}
           />
           <input
             type="password"
@@ -50,16 +57,21 @@ const LoginPage = () => {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Пароль"
             className="w-full px-5 py-3 mb-6 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-ospab-primary"
+            required
+            disabled={isLoading}
           />
           <button
             type="submit"
-            className="w-full px-5 py-3 rounded-full text-white font-bold transition-colors transform hover:scale-105 bg-ospab-primary hover:bg-ospab-accent"
+            disabled={isLoading}
+            className="w-full px-5 py-3 rounded-full text-white font-bold transition-colors transform hover:scale-105 bg-ospab-primary hover:bg-ospab-accent disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Войти
+            {isLoading ? 'Входим...' : 'Войти'}
           </button>
         </form>
         {error && (
-          <p className="mt-4 text-sm text-red-500">{error}</p>
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
         )}
         <p className="mt-6 text-gray-600">
           Нет аккаунта?{' '}
@@ -73,3 +85,6 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+
+
+
