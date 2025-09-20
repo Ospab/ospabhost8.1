@@ -38,7 +38,7 @@ const TicketsPage: React.FC<TicketsPageProps> = ({ setUserData }) => {
 
   const fetchTickets = async () => {
     try {
-      const token = localStorage.getItem('token');
+  const token = localStorage.getItem('access_token');
       const res = await axios.get('http://localhost:5000/api/ticket', {
         withCredentials: true,
         headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -55,7 +55,7 @@ const TicketsPage: React.FC<TicketsPageProps> = ({ setUserData }) => {
 
   const updateUserData = async () => {
     try {
-      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+  const token = localStorage.getItem('access_token');
       if (!token) return;
       const headers = { Authorization: `Bearer ${token}` };
       const userRes = await axios.get('http://localhost:5000/api/auth/me', { headers });
@@ -80,7 +80,7 @@ const TicketsPage: React.FC<TicketsPageProps> = ({ setUserData }) => {
     }
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+  const token = localStorage.getItem('access_token');
       await axios.post('http://localhost:5000/api/ticket/create', { title, message }, {
         withCredentials: true,
         headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -98,7 +98,7 @@ const TicketsPage: React.FC<TicketsPageProps> = ({ setUserData }) => {
   };
 
   const respondTicket = async (ticketId: number) => {
-    const token = localStorage.getItem('token');
+  const token = localStorage.getItem('access_token');
     await axios.post('http://localhost:5000/api/ticket/respond', { ticketId, message: responseMsg }, {
       withCredentials: true,
       headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -109,7 +109,7 @@ const TicketsPage: React.FC<TicketsPageProps> = ({ setUserData }) => {
   };
 
   const closeTicket = async (ticketId: number) => {
-    const token = localStorage.getItem('token');
+  const token = localStorage.getItem('access_token');
     await axios.post('http://localhost:5000/api/ticket/close', { ticketId }, {
       withCredentials: true,
       headers: token ? { Authorization: `Bearer ${token}` } : {}

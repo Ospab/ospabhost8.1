@@ -31,10 +31,10 @@ const TicketResponse: React.FC = () => {
   const fetchTickets = async () => {
     setError('');
     try {
-      const token = localStorage.getItem('token');
+  const token = localStorage.getItem('access_token');
       const res = await axios.get('http://localhost:5000/api/ticket', {
         withCredentials: true,
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+  headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       if (Array.isArray(res.data)) {
         setTickets(res.data);
@@ -51,13 +51,13 @@ const TicketResponse: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('token');
+  const token = localStorage.getItem('access_token');
       await axios.post('http://localhost:5000/api/ticket/respond', {
         ticketId,
         message: responseMsg[ticketId]
       }, {
         withCredentials: true,
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+  headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setResponseMsg(prev => ({ ...prev, [ticketId]: '' }));
       fetchTickets();
@@ -73,10 +73,10 @@ const TicketResponse: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('token');
+  const token = localStorage.getItem('access_token');
       await axios.post('http://localhost:5000/api/ticket/close', { ticketId }, {
         withCredentials: true,
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+  headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       fetchTickets();
     } catch {

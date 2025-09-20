@@ -1,119 +1,75 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { authMiddleware } from '../auth/auth.middleware';
-import { checkProxmoxConnection, createProxmoxContainer } from './proxmoxApi';
+import {
+  createServer,
+  startServer,
+  stopServer,
+  restartServer,
+  getServerStatus,
+  deleteServer,
+  changeRootPassword
+} from './server.controller';
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 
 const router = Router();
-const prisma = new PrismaClient();
+
 
 router.use(authMiddleware);
 
-router.get('/proxmox-status', async (req, res) => {
-  try {
-    console.log('Попытка подключения к серверу Proxmox...');
-    const status = await checkProxmoxConnection();
-    console.log('Статус подключения к Proxmox:', status);
-    res.json(status);
-  } catch (err) {
-    console.error('Ошибка подключения к Proxmox:', err);
-    res.status(500).json({ error: 'Ошибка подключения к Proxmox' });
-  }
-});
 
-router.post('/create', async (req, res) => {
-  try {
-    const { tariffId, osId } = req.body;
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Нет авторизации' });
 
-    const tariff = await prisma.tariff.findUnique({ where: { id: tariffId } });
-    const os = await prisma.operatingSystem.findUnique({ where: { id: osId } });
-    if (!tariff || !os) {
-      return res.status(400).json({ error: 'Тариф или ОС не найдены' });
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
-    if (user.balance < tariff.price) {
-      return res.status(400).json({ error: 'Недостаточно средств на балансе' });
-    }
-
-    let proxmoxResult;
-    try {
-      proxmoxResult = await createProxmoxContainer({ os, tariff, user });
-    } catch (proxmoxErr) {
-      console.error('Ошибка Proxmox:', proxmoxErr);
-      return res.status(500).json({ error: 'Ошибка создания сервера на Proxmox', details: proxmoxErr });
-    }
-    if (!proxmoxResult || proxmoxResult.status !== 'ok') {
-      return res.status(500).json({ error: 'Сервер не создан на Proxmox', details: proxmoxResult });
-    }
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        balance: {
-          decrement: tariff.price
-        }
-      }
-    });
-
-    const node = process.env.PROXMOX_NODE;
-    const diskTemplate = process.env.PROXMOX_DISK_TEMPLATE;
-    const server = await prisma.server.create({
-      data: {
-        userId,
-        tariffId,
-        osId,
-        status: 'active',
-        node,
-        diskTemplate,
-        proxmoxId: proxmoxResult.proxmoxId || null,
-      },
-    });
-    res.json({ success: true, server });
-  } catch (err) {
-    console.error('Ошибка создания сервера:', err);
-    return res.status(500).json({ error: 'Ошибка создания сервера' });
-  }
-});
-
-// GET /api/server — получить все серверы пользователя
+// Получить список всех серверов (для фронта)
 router.get('/', async (req, res) => {
+  const userId = req.user?.id;
+  // Если нужен только свои сервера:
+  const where = userId ? { userId } : {};
+  const servers = await prisma.server.findMany({
+    where,
+    include: {
+      os: true,
+      tariff: true
+    }
+  });
+  res.json(servers);
+});
+
+// Получить информацию о сервере (для фронта)
+router.get('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  const server = await prisma.server.findUnique({
+    where: { id },
+    include: {
+      os: true,
+      tariff: true
+    }
+  });
+  if (!server) return res.status(404).json({ error: 'Сервер не найден' });
+  res.json(server);
+});
+
+
+// Получить статистику сервера (CPU, RAM и т.д.)
+router.get('/:id/status', getServerStatus);
+
+// Получить ссылку на noVNC консоль
+import { getConsoleURL } from './proxmoxApi';
+router.post('/console', async (req, res) => {
+  const { vmid } = req.body;
+  if (!vmid) return res.status(400).json({ status: 'error', message: 'Не указан VMID' });
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Нет авторизации' });
-    const servers = await prisma.server.findMany({
-      where: { userId },
-      include: {
-        os: true,
-        tariff: true,
-      },
-    });
-    console.log('API /api/server ответ:', servers);
-    res.json(servers);
-  } catch (err) {
-    console.error('Ошибка получения серверов:', err);
-    res.status(500).json({ error: 'Ошибка получения серверов' });
+    const result = await getConsoleURL(Number(vmid));
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error?.message || 'Ошибка получения консоли' });
   }
 });
 
-// GET /api/server/:id — получить один сервер пользователя по id
-router.get('/:id', async (req, res) => {
-  try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Нет авторизации' });
-    const serverId = Number(req.params.id);
-    const server = await prisma.server.findFirst({
-      where: { id: serverId, userId },
-      include: { os: true, tariff: true },
-    });
-    if (!server) return res.status(404).json({ error: 'Сервер не найден' });
-    res.json(server);
-  } catch (err) {
-    console.error('Ошибка получения сервера:', err);
-    res.status(500).json({ error: 'Ошибка получения сервера' });
-  }
-});
+router.post('/create', createServer);
+router.post('/:id/start', startServer);
+router.post('/:id/stop', stopServer);
+router.post('/:id/restart', restartServer);
+router.delete('/:id', deleteServer);
+router.post('/:id/password', changeRootPassword);
 
 export default router;

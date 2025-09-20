@@ -33,15 +33,33 @@ model Server {
   userId      Int
   tariffId    Int
   osId        Int
-  status      String   @default("stopped")
+  status      String   @default("creating") // creating, running, stopped, suspended, error
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   user        User     @relation(fields: [userId], references: [id])
   tariff      Tariff   @relation(fields: [tariffId], references: [id])
   os          OperatingSystem @relation(fields: [osId], references: [id])
+  
+  // Proxmox данные
   node        String?  
   diskTemplate String? 
-  proxmoxId   Int?     
+  proxmoxId   Int?
+  
+  // Сетевые настройки
+  ipAddress   String?  // Локальный IP адрес
+  macAddress  String?  // MAC адрес
+  
+  // Доступы
+  rootPassword String?  // Зашифрованный root пароль
+  sshPublicKey String?  // SSH публичный ключ (опционально)
+  
+  // Мониторинг
+  lastPing    DateTime?
+  cpuUsage    Float?   @default(0)
+  memoryUsage Float?   @default(0)
+  diskUsage   Float?   @default(0)
+  networkIn   Float?   @default(0)
+  networkOut  Float?   @default(0)
 }
 
 model User {
@@ -57,6 +75,7 @@ model User {
   checks    Check[]  @relation("UserChecks")
   balance   Float  @default(0)
   servers   Server[]
+  notifications Notification[]
 }
 
 model Check {
@@ -109,4 +128,12 @@ model Response {
   createdAt  DateTime @default(now())
   ticket     Ticket   @relation("TicketResponses", fields: [ticketId], references: [id])
   operator   User     @relation("OperatorResponses", fields: [operatorId], references: [id])
+}
+model Notification {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  title     String
+  message   String
+  createdAt DateTime @default(now())
 }

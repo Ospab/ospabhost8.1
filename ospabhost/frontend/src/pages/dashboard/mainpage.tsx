@@ -12,6 +12,7 @@ import ServerPanel from './serverpanel';
 import TicketsPage from './tickets';
 import Billing from './billing';
 import Settings from './settings';
+import Notifications from './notificatons';
 import CheckVerification from './checkverification';
 import TicketResponse from './ticketresponse';
 import Checkout from './checkout';
@@ -117,6 +118,7 @@ const Dashboard = () => {
     { key: 'tickets', label: 'Тикеты', to: '/dashboard/tickets' },
     { key: 'billing', label: 'Баланс', to: '/dashboard/billing' },
     { key: 'settings', label: 'Настройки', to: '/dashboard/settings' },
+    { key: 'notifications', label: 'Уведомления', to: '/dashboard/notifications' },
   ];
   const adminTabs = [
     { key: 'checkverification', label: 'Проверка чеков', to: '/dashboard/checkverification' },
@@ -210,6 +212,7 @@ const Dashboard = () => {
               <Route path="billing" element={<Billing />} />
             )}
             <Route path="settings" element={<Settings />} />
+            <Route path="notifications" element={<Notifications />} />
             {isOperator && (
               <>
                 <Route path="checkverification" element={<CheckVerification />} />

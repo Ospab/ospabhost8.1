@@ -32,7 +32,7 @@ const Billing = () => {
     if (!checkFile || amount <= 0) return;
     setUploadLoading(true);
     try {
-      const token = localStorage.getItem('token');
+  const token = localStorage.getItem('access_token');
       const formData = new FormData();
       formData.append('file', checkFile);
       formData.append('amount', String(amount));

@@ -1,5 +1,52 @@
 
 import React, { useEffect, useState } from 'react';
+
+// Встроенная секция консоли
+function ConsoleSection({ serverId }: { serverId: number }) {
+  const [consoleUrl, setConsoleUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleOpenConsole = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('access_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.post(`http://localhost:5000/api/proxmox/console`, { vmid: serverId }, { headers });
+      if (res.data?.status === 'success' && res.data.url) {
+        setConsoleUrl(res.data.url);
+      } else {
+        setError('Ошибка открытия консоли');
+      }
+    } catch {
+      setError('Ошибка открытия консоли');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-gray-100 rounded-xl p-6 text-gray-700 font-mono text-sm flex flex-col items-center">
+      <div className="mb-2 font-bold">Консоль сервера</div>
+      {!consoleUrl ? (
+        <button
+          className="bg-ospab-primary text-white px-6 py-3 rounded-full font-bold mb-4"
+          onClick={handleOpenConsole}
+          disabled={loading}
+        >{loading ? 'Открытие...' : 'Открыть noVNC консоль'}</button>
+      ) : (
+        <iframe
+          src={consoleUrl}
+          title="noVNC Console"
+          className="w-full h-[600px] rounded-lg border"
+          allowFullScreen
+        />
+      )}
+      {error && <div className="text-red-500 text-base font-semibold text-center mt-2">{error}</div>}
+    </div>
+  );
+}
 import { useParams } from 'react-router-dom';
 import axios, { AxiosError } from 'axios';
 
@@ -14,6 +61,13 @@ interface Server {
   rootPassword?: string;
 }
 
+interface ServerStats {
+  data?: {
+    cpu?: number;
+    memory?: { usage?: number };
+  };
+}
+
 const TABS = [
   { key: 'overview', label: 'Обзор' },
   { key: 'console', label: 'Консоль' },
@@ -22,9 +76,6 @@ const TABS = [
   { key: 'security', label: 'Безопасность' },
 ];
 
-const generatePassword = () => {
-  return Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-6);
-};
 
 const ServerPanel: React.FC = () => {
   const { id } = useParams();
@@ -34,6 +85,7 @@ const ServerPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [newRoot, setNewRoot] = useState<string | null>(null);
   const [showRoot, setShowRoot] = useState(false);
+  const [stats, setStats] = useState<ServerStats | null>(null);
 
   useEffect(() => {
     const fetchServer = async () => {
@@ -42,6 +94,9 @@ const ServerPanel: React.FC = () => {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await axios.get(`http://localhost:5000/api/server/${id}`, { headers });
         setServer(res.data);
+        // Получаем статистику
+        const statsRes = await axios.get(`http://localhost:5000/api/server/${id}/status`, { headers });
+        setStats(statsRes.data.stats);
       } catch (err) {
         const error = err as AxiosError;
         if (error?.response?.status === 404) {
@@ -57,22 +112,47 @@ const ServerPanel: React.FC = () => {
     fetchServer();
   }, [id]);
 
-  // Генерация root-пароля (только для копирования)
-  const handleGenerateRoot = () => {
+  // Смена root-пароля через backend
+  const handleGenerateRoot = async () => {
     try {
-      const password = generatePassword();
-      setNewRoot(password);
-      setShowRoot(true);
-      // TODO: отправить новый пароль на backend для смены
+      const token = localStorage.getItem('access_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.post(`http://localhost:5000/api/server/${id}/password`, {}, { headers });
+      if (res.data?.status === 'success' && res.data.password) {
+        setNewRoot(res.data.password);
+        setShowRoot(true);
+      } else {
+        setError('Ошибка смены root-пароля');
+      }
     } catch (err) {
-      console.error('Ошибка генерации root-пароля:', err);
+      setError('Ошибка смены root-пароля');
+      console.error('Ошибка смены root-пароля:', err);
     }
   };
 
-  // Базовые действия (заглушки)
+  // Реальные действия управления сервером
   const handleAction = async (action: 'start' | 'stop' | 'restart') => {
-    alert(`Выполнено действие: ${action} (реализовать вызов к backend)`);
-    // TODO: реализовать вызов к backend
+    try {
+      setLoading(true);
+      setError('');
+      const token = localStorage.getItem('access_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.post(`http://localhost:5000/api/server/${id}/${action}`, {}, { headers });
+      if (res.data?.status === 'success') {
+        // Обновить статус сервера и статистику после действия
+        const updated = await axios.get(`http://localhost:5000/api/server/${id}`, { headers });
+        setServer(updated.data);
+        const statsRes = await axios.get(`http://localhost:5000/api/server/${id}/status`, { headers });
+        setStats(statsRes.data.stats);
+      } else {
+        setError(`Ошибка: ${res.data?.message || 'Не удалось выполнить действие'}`);
+      }
+    } catch (err) {
+      setError('Ошибка управления сервером');
+      console.error('Ошибка управления сервером:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -124,19 +204,23 @@ const ServerPanel: React.FC = () => {
           </div>
         )}
 
+
         {activeTab === 'console' && (
-          <div className="bg-gray-100 rounded-xl p-6 text-gray-700 font-mono text-sm">
-            <div className="mb-2 font-bold">Консоль сервера (заглушка)</div>
-            <div className="bg-black text-green-400 p-4 rounded-lg">root@{server.ip || 'server'}:~# _</div>
-          </div>
+          <ConsoleSection serverId={server.id} />
         )}
 
         {activeTab === 'stats' && (
           <div className="bg-gray-100 rounded-xl p-6">
-            <div className="mb-2 font-bold">Графики нагрузки (заглушка)</div>
+            <div className="mb-2 font-bold">Графики нагрузки</div>
             <div className="flex gap-6">
-              <div className="w-1/2 h-32 bg-white rounded-lg shadow-inner flex items-center justify-center text-gray-400">CPU</div>
-              <div className="w-1/2 h-32 bg-white rounded-lg shadow-inner flex items-center justify-center text-gray-400">RAM</div>
+              <div className="w-1/2 h-32 bg-white rounded-lg shadow-inner flex flex-col items-center justify-center">
+                <div className="font-bold text-gray-700">CPU</div>
+                <div className="text-2xl text-ospab-primary">{stats?.data?.cpu ? (stats.data.cpu * 100).toFixed(1) : '—'}%</div>
+              </div>
+              <div className="w-1/2 h-32 bg-white rounded-lg shadow-inner flex flex-col items-center justify-center">
+                <div className="font-bold text-gray-700">RAM</div>
+                <div className="text-2xl text-ospab-primary">{stats?.data?.memory?.usage ? stats.data.memory.usage.toFixed(1) : '—'}%</div>
+              </div>
             </div>
           </div>
         )}

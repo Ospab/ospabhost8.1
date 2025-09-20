@@ -31,7 +31,7 @@ const CheckVerification: React.FC = () => {
       setLoading(true);
       setError('');
       try {
-        const token = localStorage.getItem('token');
+  const token = localStorage.getItem('access_token');
         const res = await axios.get<ICheck[]>(API_URL, {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
@@ -50,17 +50,17 @@ const CheckVerification: React.FC = () => {
     setActionLoading(checkId);
     setError('');
     try {
-      const token = localStorage.getItem('token');
+  const token = localStorage.getItem('access_token');
       await axios.post(`${API_URL}/${action}`, { checkId }, {
-        headers: { Authorization: `Bearer ${token}` },
+  headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
       setChecks((prevChecks: ICheck[]) => prevChecks.map((c: ICheck) => c.id === checkId ? { ...c, status: action === 'approve' ? 'approved' : 'rejected' } : c));
       // Если подтверждение — обновить баланс пользователя
       if (action === 'approve') {
         try {
-          const userToken = localStorage.getItem('access_token') || token;
-          const headers = { Authorization: `Bearer ${userToken}` };
+          const token = localStorage.getItem('access_token');
+          const headers = { Authorization: `Bearer ${token}` };
           const userRes = await axios.get('http://localhost:5000/api/auth/me', { headers });
           // Глобально обновить userData через типизированное событие (для Dashboard)
           window.dispatchEvent(new CustomEvent<import('./types').UserData>('userDataUpdate', {
