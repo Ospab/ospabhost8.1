@@ -33,12 +33,15 @@ model Server {
   userId      Int
   tariffId    Int
   osId        Int
-  status      String   @default("stopped") // running, stopped, etc
+  status      String   @default("stopped")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   user        User     @relation(fields: [userId], references: [id])
   tariff      Tariff   @relation(fields: [tariffId], references: [id])
   os          OperatingSystem @relation(fields: [osId], references: [id])
+  node        String?  
+  diskTemplate String? 
+  proxmoxId   Int?     
 }
 
 model User {

@@ -9,31 +9,35 @@ const prisma = new PrismaClient();
 router.use(authMiddleware);
 
 router.get('/proxmox-status', async (req, res) => {
-  const status = await checkProxmoxConnection();
-  res.json(status);
+  try {
+    console.log('Попытка подключения к серверу Proxmox...');
+    const status = await checkProxmoxConnection();
+    console.log('Статус подключения к Proxmox:', status);
+    res.json(status);
+  } catch (err) {
+    console.error('Ошибка подключения к Proxmox:', err);
+    res.status(500).json({ error: 'Ошибка подключения к Proxmox' });
+  }
 });
+
 router.post('/create', async (req, res) => {
   try {
     const { tariffId, osId } = req.body;
-    // Получаем userId из авторизации
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: 'Нет авторизации' });
 
-    // Получаем тариф и ОС
     const tariff = await prisma.tariff.findUnique({ where: { id: tariffId } });
     const os = await prisma.operatingSystem.findUnique({ where: { id: osId } });
     if (!tariff || !os) {
       return res.status(400).json({ error: 'Тариф или ОС не найдены' });
     }
 
-    // Проверяем баланс пользователя
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
     if (user.balance < tariff.price) {
       return res.status(400).json({ error: 'Недостаточно средств на балансе' });
     }
 
-    // 1. Создаём сервер на Proxmox
     let proxmoxResult;
     try {
       proxmoxResult = await createProxmoxContainer({ os, tariff, user });
@@ -45,7 +49,6 @@ router.post('/create', async (req, res) => {
       return res.status(500).json({ error: 'Сервер не создан на Proxmox', details: proxmoxResult });
     }
 
-    // 2. Списываем средства
     await prisma.user.update({
       where: { id: userId },
       data: {
@@ -55,7 +58,6 @@ router.post('/create', async (req, res) => {
       }
     });
 
-    // 3. Создаём запись о сервере в БД
     const node = process.env.PROXMOX_NODE;
     const diskTemplate = process.env.PROXMOX_DISK_TEMPLATE;
     const server = await prisma.server.create({
@@ -79,8 +81,8 @@ router.post('/create', async (req, res) => {
 // GET /api/server — получить все серверы пользователя
 router.get('/', async (req, res) => {
   try {
-    // TODO: получить userId из авторизации (req.user)
-    const userId = 1; // временно
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Нет авторизации' });
     const servers = await prisma.server.findMany({
       where: { userId },
       include: {
@@ -99,8 +101,8 @@ router.get('/', async (req, res) => {
 // GET /api/server/:id — получить один сервер пользователя по id
 router.get('/:id', async (req, res) => {
   try {
-    // TODO: получить userId из авторизации (req.user)
-    const userId = 1; // временно
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Нет авторизации' });
     const serverId = Number(req.params.id);
     const server = await prisma.server.findFirst({
       where: { id: serverId, userId },
