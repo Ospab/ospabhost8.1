@@ -342,6 +342,133 @@ export async function getConsoleURL(vmid: number): Promise<{ status: string; url
   }
 }
 
+// Изменение конфигурации контейнера (CPU, RAM, Disk)
+export async function resizeContainer(vmid: number, config: { cores?: number; memory?: number; rootfs?: string }) {
+  try {
+    const response = await axios.put(
+      `${PROXMOX_API_URL}/nodes/${PROXMOX_NODE}/lxc/${vmid}/config`,
+      config,
+      { headers: getProxmoxHeaders() }
+    );
+    return {
+      status: 'success',
+      data: response.data?.data
+    };
+  } catch (error: any) {
+    console.error('Ошибка изменения конфигурации:', error);
+    return {
+      status: 'error',
+      message: error.response?.data?.errors || error.message
+    };
+  }
+}
+
+// Создание снэпшота
+export async function createSnapshot(vmid: number, snapname: string, description?: string) {
+  try {
+    const response = await axios.post(
+      `${PROXMOX_API_URL}/nodes/${PROXMOX_NODE}/lxc/${vmid}/snapshot`,
+      {
+        snapname,
+        description: description || `Snapshot ${snapname}`
+      },
+      { headers: getProxmoxHeaders() }
+    );
+    return {
+      status: 'success',
+      taskId: response.data?.data,
+      snapname
+    };
+  } catch (error: any) {
+    console.error('Ошибка создания снэпшота:', error);
+    return {
+      status: 'error',
+      message: error.response?.data?.errors || error.message
+    };
+  }
+}
+
+// Получение списка снэпшотов
+export async function listSnapshots(vmid: number) {
+  try {
+    const response = await axios.get(
+      `${PROXMOX_API_URL}/nodes/${PROXMOX_NODE}/lxc/${vmid}/snapshot`,
+      { headers: getProxmoxHeaders() }
+    );
+    return {
+      status: 'success',
+      data: response.data?.data || []
+    };
+  } catch (error: any) {
+    console.error('Ошибка получения списка снэпшотов:', error);
+    return {
+      status: 'error',
+      message: error.response?.data?.errors || error.message
+    };
+  }
+}
+
+// Восстановление из снэпшота
+export async function rollbackSnapshot(vmid: number, snapname: string) {
+  try {
+    const response = await axios.post(
+      `${PROXMOX_API_URL}/nodes/${PROXMOX_NODE}/lxc/${vmid}/snapshot/${snapname}/rollback`,
+      {},
+      { headers: getProxmoxHeaders() }
+    );
+    return {
+      status: 'success',
+      taskId: response.data?.data
+    };
+  } catch (error: any) {
+    console.error('Ошибка восстановления снэпшота:', error);
+    return {
+      status: 'error',
+      message: error.response?.data?.errors || error.message
+    };
+  }
+}
+
+// Удаление снэпшота
+export async function deleteSnapshot(vmid: number, snapname: string) {
+  try {
+    const response = await axios.delete(
+      `${PROXMOX_API_URL}/nodes/${PROXMOX_NODE}/lxc/${vmid}/snapshot/${snapname}`,
+      { headers: getProxmoxHeaders() }
+    );
+    return {
+      status: 'success',
+      taskId: response.data?.data
+    };
+  } catch (error: any) {
+    console.error('Ошибка удаления снэпшота:', error);
+    return {
+      status: 'error',
+      message: error.response?.data?.errors || error.message
+    };
+  }
+}
+
+// Получение списка всех контейнеров
+export async function listContainers() {
+  try {
+    const response = await axios.get(
+      `${PROXMOX_API_URL}/nodes/${PROXMOX_NODE}/lxc`,
+      { headers: getProxmoxHeaders() }
+    );
+    return {
+      status: 'success',
+      data: response.data?.data || []
+    };
+  } catch (error: any) {
+    console.error('Ошибка получения списка контейнеров:', error);
+    return {
+      status: 'error',
+      message: error.response?.data?.errors || error.message
+    };
+  }
+}
+
 // Проверка соединения с Proxmox
 export async function checkProxmoxConnection() {
   try {

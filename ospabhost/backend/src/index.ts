@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 import authRoutes from './modules/auth/auth.routes';
 import ticketRoutes from './modules/ticket/ticket.routes';
 import checkRoutes from './modules/check/check.routes';
@@ -8,10 +10,21 @@ import proxmoxRoutes from '../proxmox/proxmox.routes';
 import tariffRoutes from './modules/tariff';
 import osRoutes from './modules/os';
 import serverRoutes from './modules/server';
+import { MonitoringService } from './modules/server/monitoring.service';
 
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
+
+// Настройка Socket.IO с CORS
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: ['http://localhost:3000', 'http://localhost:5173'],
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
 
 // ИСПРАВЛЕНО: более точная настройка CORS
 app.use(cors({
@@ -65,7 +78,13 @@ app.use('/api/server', serverRoutes);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+// Инициализация сервиса мониторинга
+const monitoringService = new MonitoringService(io);
+monitoringService.startMonitoring();
+
+server.listen(PORT, () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
   console.log(`📊 База данных: ${process.env.DATABASE_URL ? 'подключена' : 'НЕ НАСТРОЕНА'}`);
+  console.log(`🔌 WebSocket сервер запущен`);
+  console.log(`📡 Мониторинг серверов активен`);
 });
