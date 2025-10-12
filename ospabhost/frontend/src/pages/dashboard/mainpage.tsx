@@ -9,6 +9,7 @@ import { useContext } from 'react';
 import Summary from './summary';
 import Servers from './servers';
 import ServerPanel from './serverpanel';
+import ServerManagement from './ServerManagement';
 import TicketsPage from './tickets';
 import Billing from './billing';
 import Settings from './settings';
@@ -115,6 +116,7 @@ const Dashboard = () => {
   const tabs = [
     { key: 'summary', label: 'Сводка', to: '/dashboard' },
     { key: 'servers', label: 'Серверы', to: '/dashboard/servers' },
+    { key: 'manage', label: 'Управление', to: '/dashboard/manage' },
     { key: 'tickets', label: 'Тикеты', to: '/dashboard/tickets' },
     { key: 'billing', label: 'Баланс', to: '/dashboard/billing' },
     { key: 'settings', label: 'Настройки', to: '/dashboard/settings' },
@@ -203,6 +205,7 @@ const Dashboard = () => {
             <Route path="/" element={<Summary userData={userData ?? { user: { username: '', operator: 0 }, balance: 0, servers: [], tickets: [] }} />} />
             <Route path="servers" element={<Servers />} />
             <Route path="server/:id" element={<ServerPanel />} />
+            <Route path="manage" element={<ServerManagement />} />
             <Route path="checkout" element={<Checkout onSuccess={() => navigate('/dashboard/servers')} />} />
             <Route path="tariffs" element={<TariffsPage />} />
             {userData && (

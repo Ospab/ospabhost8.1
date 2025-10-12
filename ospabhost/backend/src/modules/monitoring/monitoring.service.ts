@@ -216,11 +216,15 @@ Condition: ${rule.condition}`;
     ];
 
     for (const rule of defaultRules) {
-      await prisma.alertRule.upsert({
-        where: { name: rule.name },
-        update: rule,
-        create: rule
+      const existing = await prisma.alertRule.findFirst({
+        where: { name: rule.name }
       });
+
+      if (!existing) {
+        await prisma.alertRule.create({
+          data: rule
+        });
+      }
     }
 
     console.log('Default alert rules created');
