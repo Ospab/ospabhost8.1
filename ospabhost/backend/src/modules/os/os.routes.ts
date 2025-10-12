@@ -1,10 +1,14 @@
+
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { authMiddleware } from '../auth/auth.middleware';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// GET /api/os — получить все ОС
+router.use(authMiddleware);
+
+// GET /api/os — получить все ОС (только для авторизованных)
 router.get('/', async (req, res) => {
   try {
     const oses = await prisma.operatingSystem.findMany();

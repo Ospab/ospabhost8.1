@@ -13,7 +13,8 @@
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.1",
     "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "undici": "^5.18.0"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -45,6 +46,7 @@
     "prisma": "^6.16.1",
     "bcrypt": "^5.1.0",
     "cors": "^2.8.5",
+    "proxmox-api": "^1.0.0",
     "dotenv": "^16.0.0",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",

@@ -33,9 +33,11 @@ const Checkout: React.FC<CheckoutProps> = ({ onSuccess }) => {
     // Загрузка тарифов и ОС
     const fetchData = async () => {
       try {
+        const token = localStorage.getItem('access_token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const [tariffRes, osRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/tariff'),
-          axios.get('http://localhost:5000/api/os'),
+          axios.get('https://ospab.host:5000/api/tariff', { headers }),
+          axios.get('https://ospab.host:5000/api/os', { headers }),
         ]);
         setTariffs(tariffRes.data);
         setOses(osRes.data);
@@ -62,7 +64,7 @@ const Checkout: React.FC<CheckoutProps> = ({ onSuccess }) => {
     try {
       const token = localStorage.getItem('access_token') || localStorage.getItem('token');
       console.log('Покупка сервера:', { tariffId: selectedTariff, osId: selectedOs });
-      const res = await axios.post('http://localhost:5000/api/server/create', {
+  const res = await axios.post('https://ospab.host:5000/api/server/create', {
         tariffId: selectedTariff,
         osId: selectedOs,
       }, {
@@ -76,7 +78,7 @@ const Checkout: React.FC<CheckoutProps> = ({ onSuccess }) => {
       }
       // После успешной покупки обновляем userData
       try {
-        const userRes = await axios.get('http://localhost:5000/api/auth/me', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  const userRes = await axios.get('https://ospab.host:5000/api/auth/me', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         window.dispatchEvent(new CustomEvent('userDataUpdate', {
           detail: {
             user: userRes.data.user,

@@ -24,7 +24,7 @@ const LoginPage = () => {
     setError('');
     setIsLoading(true);
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+  const response = await axios.post('https://ospab.host:5000/api/auth/login', {
         email: email,
         password: password,
       });

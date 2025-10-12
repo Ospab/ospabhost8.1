@@ -21,7 +21,7 @@ const Servers: React.FC = () => {
       try {
   const token = localStorage.getItem('access_token');
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const res = await axios.get('http://localhost:5000/api/server', { headers });
+  const res = await axios.get('https://ospab.host:5000/api/server', { headers });
         console.log('Ответ API серверов:', res.data);
         // Защита от получения HTML вместо JSON
         if (typeof res.data === 'string' && res.data.startsWith('<!doctype html')) {
@@ -47,9 +47,6 @@ const Servers: React.FC = () => {
     <div className="p-8 bg-white rounded-3xl shadow-xl max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-3xl font-bold text-gray-800">Мои серверы</h2>
-        {servers.length === 0 && !loading && !error && (
-          <a href="/tariffs" className="bg-ospab-primary text-white px-4 py-2 rounded font-bold hover:bg-ospab-primary-dark transition">Купить сервер</a>
-        )}
       </div>
       {loading ? (
         <p className="text-lg text-gray-500">Загрузка...</p>

@@ -39,7 +39,7 @@ const TicketsPage: React.FC<TicketsPageProps> = ({ setUserData }) => {
   const fetchTickets = async () => {
     try {
   const token = localStorage.getItem('access_token');
-      const res = await axios.get('http://localhost:5000/api/ticket', {
+  const res = await axios.get('https://ospab.host:5000/api/ticket', {
         withCredentials: true,
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
@@ -58,7 +58,7 @@ const TicketsPage: React.FC<TicketsPageProps> = ({ setUserData }) => {
   const token = localStorage.getItem('access_token');
       if (!token) return;
       const headers = { Authorization: `Bearer ${token}` };
-      const userRes = await axios.get('http://localhost:5000/api/auth/me', { headers });
+  const userRes = await axios.get('https://ospab.host:5000/api/auth/me', { headers });
       setUserData({
         user: userRes.data.user,
         balance: userRes.data.user.balance ?? 0,
@@ -81,7 +81,7 @@ const TicketsPage: React.FC<TicketsPageProps> = ({ setUserData }) => {
     setLoading(true);
     try {
   const token = localStorage.getItem('access_token');
-      await axios.post('http://localhost:5000/api/ticket/create', { title, message }, {
+  await axios.post('https://ospab.host:5000/api/ticket/create', { title, message }, {
         withCredentials: true,
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
@@ -99,7 +99,7 @@ const TicketsPage: React.FC<TicketsPageProps> = ({ setUserData }) => {
 
   const respondTicket = async (ticketId: number) => {
   const token = localStorage.getItem('access_token');
-    await axios.post('http://localhost:5000/api/ticket/respond', { ticketId, message: responseMsg }, {
+  await axios.post('https://ospab.host:5000/api/ticket/respond', { ticketId, message: responseMsg }, {
       withCredentials: true,
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
@@ -110,7 +110,7 @@ const TicketsPage: React.FC<TicketsPageProps> = ({ setUserData }) => {
 
   const closeTicket = async (ticketId: number) => {
   const token = localStorage.getItem('access_token');
-    await axios.post('http://localhost:5000/api/ticket/close', { ticketId }, {
+  await axios.post('https://ospab.host:5000/api/ticket/close', { ticketId }, {
       withCredentials: true,
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     });

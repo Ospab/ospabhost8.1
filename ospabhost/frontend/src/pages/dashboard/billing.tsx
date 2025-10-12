@@ -36,7 +36,7 @@ const Billing = () => {
       const formData = new FormData();
       formData.append('file', checkFile);
       formData.append('amount', String(amount));
-      const response = await axios.post('http://localhost:5000/api/check/upload', formData, {
+  const response = await axios.post('https://ospab.host:5000/api/check/upload', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           // 'Content-Type' не указываем вручную для FormData!

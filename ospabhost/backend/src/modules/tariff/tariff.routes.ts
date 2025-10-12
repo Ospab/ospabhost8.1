@@ -1,10 +1,10 @@
+
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// GET /api/tariff — получить все тарифы
 router.get('/', async (req, res) => {
   try {
     const tariffs = await prisma.tariff.findMany();

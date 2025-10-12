@@ -17,7 +17,11 @@ model Tariff {
   description String?
   createdAt   DateTime @default(now())
   servers     Server[]
+
+@@map("tariff")
 }
+
+
 
 model OperatingSystem {
   id          Int      @id @default(autoincrement())
@@ -26,6 +30,8 @@ model OperatingSystem {
   template    String?  // путь к шаблону для контейнера
   createdAt   DateTime @default(now())
   servers     Server[]
+
+  @@map("operatingsystem")
 }
 
 model Server {
@@ -60,6 +66,8 @@ model Server {
   diskUsage   Float?   @default(0)
   networkIn   Float?   @default(0)
   networkOut  Float?   @default(0)
+
+  @@map("server")
 }
 
 model User {
@@ -76,6 +84,8 @@ model User {
   balance   Float  @default(0)
   servers   Server[]
   notifications Notification[]
+
+  @@map("user")
 }
 
 model Check {
@@ -86,6 +96,8 @@ model Check {
   fileUrl   String
   createdAt DateTime @default(now())
   user      User     @relation("UserChecks", fields: [userId], references: [id])
+
+@@map("check")
 }
 
 model Plan {
@@ -98,6 +110,8 @@ model Plan {
   userId      Int
   owner       User      @relation("UserPlans", fields: [userId], references: [id])
   services    Service[] @relation("PlanServices")
+
+@@map("plan")
 }
 
 model Service {
@@ -106,6 +120,8 @@ model Service {
   price   Float
   planId  Int?
   plan    Plan?   @relation("PlanServices", fields: [planId], references: [id])
+
+@@map("service")
 }
 
 model Ticket {
@@ -118,6 +134,8 @@ model Ticket {
   updatedAt  DateTime   @updatedAt
   responses  Response[] @relation("TicketResponses")
   user       User?      @relation("UserTickets", fields: [userId], references: [id])
+
+@@map("ticket")
 }
 
 model Response {
@@ -128,6 +146,10 @@ model Response {
   createdAt  DateTime @default(now())
   ticket     Ticket   @relation("TicketResponses", fields: [ticketId], references: [id])
   operator   User     @relation("OperatorResponses", fields: [operatorId], references: [id])
+
+@@map("response")
+
+
 }
 model Notification {
   id        Int      @id @default(autoincrement())
@@ -136,4 +158,6 @@ model Notification {
   title     String
   message   String
   createdAt DateTime @default(now())
+
+@@map("notification")
 }

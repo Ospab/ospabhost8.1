@@ -14,7 +14,7 @@ const RegisterPage = () => {
     setError(''); // Очищаем предыдущие ошибки
     
     try {
-      await axios.post('http://localhost:5000/api/auth/register', {
+  await axios.post('https://ospab.host:5000/api/auth/register', {
         username: username,
         email: email,
         password: password

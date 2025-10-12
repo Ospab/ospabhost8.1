@@ -66,13 +66,13 @@ export async function createServer(req: Request, res: Response) {
       });
     }
 
-    // Сохраняем сервер в БД с реальным статусом
+    // Сохраняем сервер в БД, статус всегда 'running' после покупки
     const server = await prisma.server.create({
       data: {
         userId,
         tariffId,
         osId,
-        status: result.containerStatus || 'creating',
+        status: 'running',
         proxmoxId: Number(result.vmid),
         ipAddress: result.ipAddress,
         rootPassword: result.rootPassword,
@@ -146,10 +146,11 @@ async function handleControl(req: Request, res: Response, action: 'start' | 'sto
     const result = await controlContainer(server.proxmoxId, action);
     // Polling статуса VM после управления
     let newStatus = server.status;
+    let actionSuccess = false;
+    let status = '';
+    let attempts = 0;
+    const maxAttempts = 10;
     if (result.status === 'success') {
-      let status = '';
-      let attempts = 0;
-      const maxAttempts = 10;
       while (attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 3000));
         const stats = await getContainerStats(server.proxmoxId);
@@ -158,6 +159,7 @@ async function handleControl(req: Request, res: Response, action: 'start' | 'sto
           if ((action === 'start' && status === 'running') ||
               (action === 'stop' && status === 'stopped') ||
               (action === 'restart' && status === 'running')) {
+            actionSuccess = true;
             break;
           }
         }
@@ -178,6 +180,11 @@ async function handleControl(req: Request, res: Response, action: 'start' | 'sto
       }
       await prisma.server.update({ where: { id }, data: { status: newStatus } });
     }
+    // Если статус изменился, считаем действие успешным даже если result.status !== 'success'
+    if (newStatus !== server.status) {
+      return res.json({ status: 'success', newStatus, message: 'Статус сервера изменён успешно' });
+    }
+    // Если не удалось, возвращаем исходный ответ
     res.json({ ...result, status: newStatus });
   } catch (error: any) {
     res.status(500).json({ error: error?.message || 'Ошибка управления сервером' });
@@ -208,7 +215,9 @@ export async function changeRootPassword(req: Request, res: Response) {
     const id = Number(req.params.id);
     const server = await prisma.server.findUnique({ where: { id } });
     if (!server || !server.proxmoxId) return res.status(404).json({ error: 'Сервер не найден или нет VMID' });
-    const result = await proxmoxChangeRootPassword(server.proxmoxId);
+    // Используем SSH для смены пароля
+    const { changeRootPasswordSSH } = require('./proxmoxApi');
+    const result = await changeRootPasswordSSH(server.proxmoxId);
     if (result?.status === 'success' && result.password) {
       await prisma.server.update({ where: { id }, data: { rootPassword: result.password } });
     }

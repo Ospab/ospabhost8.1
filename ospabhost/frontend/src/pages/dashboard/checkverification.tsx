@@ -18,7 +18,7 @@ interface ICheck {
   user?: IUser;
 }
 
-const API_URL = 'http://localhost:5000/api/check';
+const API_URL = 'https://ospab.host:5000/api/check';
 
 const CheckVerification: React.FC = () => {
   const [checks, setChecks] = useState<ICheck[]>([]);
@@ -61,7 +61,7 @@ const CheckVerification: React.FC = () => {
         try {
           const token = localStorage.getItem('access_token');
           const headers = { Authorization: `Bearer ${token}` };
-          const userRes = await axios.get('http://localhost:5000/api/auth/me', { headers });
+          const userRes = await axios.get('https://ospab.host:5000/api/auth/me', { headers });
           // Глобально обновить userData через типизированное событие (для Dashboard)
           window.dispatchEvent(new CustomEvent<import('./types').UserData>('userDataUpdate', {
             detail: {
@@ -109,8 +109,8 @@ const CheckVerification: React.FC = () => {
                 </div>
               </div>
               <div className="flex flex-col items-center gap-2 md:ml-8">
-                <a href={`http://localhost:5000${check.fileUrl}`} target="_blank" rel="noopener noreferrer" className="block mb-2">
-                  <img src={`http://localhost:5000${check.fileUrl}`} alt="Чек" className="w-32 h-32 object-contain rounded-xl border" />
+                <a href={`https://ospab.host:5000${check.fileUrl}`} target="_blank" rel="noopener noreferrer" className="block mb-2">
+                  <img src={`https://ospab.host:5000${check.fileUrl}`} alt="Чек" className="w-32 h-32 object-contain rounded-xl border" />
                 </a>
                 {check.status === 'pending' && (
                   <>

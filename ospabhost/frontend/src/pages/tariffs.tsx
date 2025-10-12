@@ -1,49 +1,47 @@
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import AuthContext from '../context/authcontext';
 
 const TariffsPage = () => {
 	const [tariffs, setTariffs] = useState<Array<{id:number;name:string;price:number;description?:string}>>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
 	const navigate = useNavigate();
-	const { isLoggedIn } = useContext(AuthContext);
+
 
 		useEffect(() => {
-			const fetchTariffs = async () => {
-				try {
-					const res = await axios.get('http://localhost:5000/api/tariff');
-					console.log('Ответ API тарифов:', res.data);
-					if (Array.isArray(res.data)) {
-						setTariffs(res.data);
-					} else {
-						setError('Некорректный формат данных тарифов');
-						setTariffs([]);
-					}
-				} catch (err) {
-					console.error('Ошибка загрузки тарифов:', err);
-					setError('Ошибка загрузки тарифов');
+		const fetchTariffs = async () => {
+			try {
+				const res = await axios.get('https://ospab.host:5000/api/tariff');
+				console.log('Ответ API тарифов:', res.data);
+				if (Array.isArray(res.data)) {
+					setTariffs(res.data);
+				} else {
+					setError('Некорректный формат данных тарифов');
 					setTariffs([]);
 				}
-				setLoading(false);
-			};
-			fetchTariffs();
-		}, []);
+			} catch (err) {
+				console.error('Ошибка загрузки тарифов:', err);
+				setError('Ошибка загрузки тарифов');
+				setTariffs([]);
+			}
+			setLoading(false);
+		};
+		fetchTariffs();
+	}, []);
 
 	const handleBuy = (tariffId: number) => {
-		if (!isLoggedIn) {
-			navigate('/login');
-			return;
-		}
 		navigate(`/dashboard/checkout?tariff=${tariffId}`);
 	};
 
 	return (
 		<div className="min-h-screen bg-gray-50 py-20">
 			<div className="container mx-auto px-4">
-				<h1 className="text-4xl md:text-5xl font-bold text-center mb-16 text-gray-900">Тарифы</h1>
+						<h1 className="text-4xl md:text-5xl font-bold text-center mb-6 text-gray-900">Тарифы</h1>
+								<p className="text-lg text-gray-600 text-center mb-10 max-w-2xl mx-auto">
+									Выберите тариф для размещения сайта или сервера. ospab.host — надёжно и удобно!
+								</p>
 						{loading ? (
 							<p className="text-lg text-gray-500 text-center">Загрузка...</p>
 						) : error ? (

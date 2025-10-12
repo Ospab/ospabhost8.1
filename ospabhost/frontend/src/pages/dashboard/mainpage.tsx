@@ -49,7 +49,7 @@ const Dashboard = () => {
           return;
         }
         const headers = { Authorization: `Bearer ${token}` };
-        const userRes = await axios.get('http://localhost:5000/api/auth/me', { headers });
+  const userRes = await axios.get('https://ospab.host:5000/api/auth/me', { headers });
         setUserData({
           user: userRes.data.user,
           balance: userRes.data.user.balance ?? 0,
@@ -75,7 +75,7 @@ const Dashboard = () => {
       const token = localStorage.getItem('access_token');
       if (!token) return;
       const headers = { Authorization: `Bearer ${token}` };
-      const userRes = await axios.get('http://localhost:5000/api/auth/me', { headers });
+  const userRes = await axios.get('https://ospab.host:5000/api/auth/me', { headers });
       setUserData({
         user: userRes.data.user,
         balance: userRes.data.user.balance ?? 0,
@@ -198,7 +198,12 @@ const Dashboard = () => {
             })}
           </p>
         </div>
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-8 pt-12">
+          {activeTab === 'summary' && (
+            <div className="border-4 border-red-500 bg-red-100 text-red-900 font-bold text-lg rounded-2xl shadow-lg p-6 mb-8 text-center animate-pulse">
+              ⚠️ Управление серверами временно невозможно — сайт ещё в разработке!
+            </div>
+          )}
           <Routes>
             <Route path="/" element={<Summary userData={userData ?? { user: { username: '', operator: 0 }, balance: 0, servers: [], tickets: [] }} />} />
             <Route path="servers" element={<Servers />} />

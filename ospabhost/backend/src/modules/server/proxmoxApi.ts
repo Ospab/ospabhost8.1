@@ -1,3 +1,19 @@
+// Смена root-пароля через SSH (для LXC)
+import { exec } from 'child_process';
+
+export async function changeRootPasswordSSH(vmid: number): Promise<{ status: string; password?: string; message?: string }> {
+  const newPassword = generateSecurePassword();
+  return new Promise((resolve) => {
+    exec(`ssh -o StrictHostKeyChecking=no root@${process.env.PROXMOX_NODE} pct set ${vmid} --password ${newPassword}`, (err, stdout, stderr) => {
+      if (err) {
+        console.error('Ошибка смены пароля через SSH:', stderr);
+        resolve({ status: 'error', message: stderr });
+      } else {
+        resolve({ status: 'success', password: newPassword });
+      }
+    });
+  });
+}
 import axios from 'axios';
 import crypto from 'crypto';
 import dotenv from 'dotenv';

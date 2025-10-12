@@ -43,3 +43,4 @@ export async function createContainer({ vmid, hostname, password, ostemplate, st
     throw new Error('Ошибка создания контейнера: ' + (err instanceof Error ? err.message : err));
   }
 }
+

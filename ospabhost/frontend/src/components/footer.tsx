@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import logo from '../assets/logo.svg';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -9,6 +10,9 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
           {/* About Section */}
           <div>
+            <div className="mb-4 flex justify-center md:justify-start">
+              <img src={logo} alt="Логотип" className="h-16 w-auto" />
+            </div>
             <h3 className="text-xl font-bold mb-4">О нас</h3>
             <p className="text-sm text-gray-400">
               ospab.host - это надежный хостинг для ваших проектов. Мы предлагаем высокую производительность и круглосуточную поддержку.

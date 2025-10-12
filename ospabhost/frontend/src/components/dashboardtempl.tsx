@@ -10,7 +10,8 @@ const DashboardTempl: React.FC<DashboardTemplProps> = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <div className="pt-16">
+      <div className="border-t border-gray-200" />
+      <div>
         {children}
       </div>
     </div>

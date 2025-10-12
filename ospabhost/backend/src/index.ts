@@ -1,8 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import http from 'http';
-import { Server as SocketIOServer } from 'socket.io';
 import authRoutes from './modules/auth/auth.routes';
 import ticketRoutes from './modules/ticket/ticket.routes';
 import checkRoutes from './modules/check/check.routes';
@@ -10,25 +8,18 @@ import proxmoxRoutes from '../proxmox/proxmox.routes';
 import tariffRoutes from './modules/tariff';
 import osRoutes from './modules/os';
 import serverRoutes from './modules/server';
-import { MonitoringService } from './modules/server/monitoring.service';
 
 dotenv.config();
 
 const app = express();
-const server = http.createServer(app);
-
-// Настройка Socket.IO с CORS
-const io = new SocketIOServer(server, {
-  cors: {
-    origin: ['http://localhost:3000', 'http://localhost:5173'],
-    methods: ['GET', 'POST'],
-    credentials: true
-  }
-});
 
 // ИСПРАВЛЕНО: более точная настройка CORS
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173'], // Vite обычно использует 5173
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'https://ospab.host'
+  ], // Vite обычно использует 5173
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -78,13 +69,19 @@ app.use('/api/server', serverRoutes);
 
 const PORT = process.env.PORT || 5000;
 
-// Инициализация сервиса мониторинга
-const monitoringService = new MonitoringService(io);
-monitoringService.startMonitoring();
+import { setupConsoleWSS } from './modules/server/server.console';
+import https from 'https';
+import fs from 'fs';
 
-server.listen(PORT, () => {
-  console.log(`🚀 Сервер запущен на порту ${PORT}`);
+const sslOptions = {
+  key: fs.readFileSync('/etc/apache2/ssl/ospab.host.key'),
+  cert: fs.readFileSync('/etc/apache2/ssl/ospab.host.crt'),
+};
+
+const httpsServer = https.createServer(sslOptions, app);
+setupConsoleWSS(httpsServer);
+
+httpsServer.listen(PORT, () => {
+  console.log(`🚀 HTTPS сервер запущен на порту ${PORT}`);
   console.log(`📊 База данных: ${process.env.DATABASE_URL ? 'подключена' : 'НЕ НАСТРОЕНА'}`);
-  console.log(`🔌 WebSocket сервер запущен`);
-  console.log(`📡 Мониторинг серверов активен`);
 });

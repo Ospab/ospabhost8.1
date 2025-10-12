@@ -32,7 +32,7 @@ const TicketResponse: React.FC = () => {
     setError('');
     try {
   const token = localStorage.getItem('access_token');
-      const res = await axios.get('http://localhost:5000/api/ticket', {
+  const res = await axios.get('https://ospab.host:5000/api/ticket', {
         withCredentials: true,
   headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
@@ -52,7 +52,7 @@ const TicketResponse: React.FC = () => {
     setError('');
     try {
   const token = localStorage.getItem('access_token');
-      await axios.post('http://localhost:5000/api/ticket/respond', {
+  await axios.post('https://ospab.host:5000/api/ticket/respond', {
         ticketId,
         message: responseMsg[ticketId]
       }, {
@@ -74,7 +74,7 @@ const TicketResponse: React.FC = () => {
     setError('');
     try {
   const token = localStorage.getItem('access_token');
-      await axios.post('http://localhost:5000/api/ticket/close', { ticketId }, {
+  await axios.post('https://ospab.host:5000/api/ticket/close', { ticketId }, {
         withCredentials: true,
   headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
