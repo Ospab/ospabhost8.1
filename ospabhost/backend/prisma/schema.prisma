@@ -60,6 +60,76 @@ model Server {
   diskUsage   Float?   @default(0)
   networkIn   Float?   @default(0)
   networkOut  Float?   @default(0)
+  
+  // Связи с новыми таблицами
+  metrics      ServerMetrics[]
+  snapshots    ServerSnapshot[]
+  actions      ServerAction[]
+  alerts       AlertNotification[]
+}
+
+model ServerMetrics {
+  id          Int      @id @default(autoincrement())
+  serverId    Int
+  server      Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  cpu         Float
+  memory      Float
+  disk        Float
+  networkIn   Float
+  networkOut  Float
+  timestamp   DateTime @default(now())
+  
+  @@index([serverId, timestamp])
+}
+
+model ServerSnapshot {
+  id          Int      @id @default(autoincrement())
+  serverId    Int
+  server      Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  snapname    String   // Proxmox snapshot name
+  createdAt   DateTime @default(now())
+  
+  @@index([serverId])
+}
+
+model ServerAction {
+  id          Int      @id @default(autoincrement())
+  serverId    Int
+  server      Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  action      String   // start, stop, restart, snapshot, delete, etc
+  userId      Int
+  status      String   @default("pending") // pending, success, failed
+  result      String?  @db.Text
+  createdAt   DateTime @default(now())
+  
+  @@index([serverId, createdAt])
+}
+
+model AlertRule {
+  id          Int      @id @default(autoincrement())
+  name        String
+  metric      String   // cpu, memory, disk
+  threshold   Float
+  condition   String   // greater_than, less_than
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  notifications AlertNotification[]
+}
+
+model AlertNotification {
+  id          Int      @id @default(autoincrement())
+  serverId    Int
+  server      Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  ruleId      Int
+  rule        AlertRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  message     String   @db.Text
+  sent        Boolean  @default(false)
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+  
+  @@index([serverId, sent])
 }
 
 model User {

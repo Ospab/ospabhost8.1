@@ -5,7 +5,12 @@ import {
   controlContainer,
   getContainerStats,
   changeRootPassword as proxmoxChangeRootPassword,
-  deleteContainer
+  deleteContainer,
+  createSnapshot as proxmoxCreateSnapshot,
+  listSnapshots as proxmoxListSnapshots,
+  rollbackSnapshot as proxmoxRollbackSnapshot,
+  deleteSnapshot as proxmoxDeleteSnapshot,
+  getConsoleURL as proxmoxGetConsoleURL
 } from './proxmoxApi';
 
 const prisma = new PrismaClient();
@@ -210,5 +215,141 @@ export async function changeRootPassword(req: Request, res: Response) {
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error?.message || 'Ошибка смены пароля' });
+  }
+}
+
+// Создать снэпшот
+export async function createSnapshot(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const { name, description } = req.body;
+    const server = await prisma.server.findUnique({ where: { id } });
+    if (!server || !server.proxmoxId) return res.status(404).json({ error: 'Сервер не найден или нет VMID' });
+    
+    const snapname = name || `snap-${Date.now()}`;
+    const result = await proxmoxCreateSnapshot(server.proxmoxId, snapname, description);
+    
+    if (result.status === 'success') {
+      await prisma.serverSnapshot.create({
+        data: {
+          serverId: id,
+          name: snapname,
+          description: description || 'User created snapshot',
+          snapname
+        }
+      });
+    }
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Ошибка создания снэпшота' });
+  }
+}
+
+// Получить список снэпшотов
+export async function getSnapshots(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const server = await prisma.server.findUnique({ where: { id } });
+    if (!server || !server.proxmoxId) return res.status(404).json({ error: 'Сервер не найден или нет VMID' });
+    
+    const snapshots = await prisma.serverSnapshot.findMany({
+      where: { serverId: id },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ status: 'success', data: snapshots });
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Ошибка получения снэпшотов' });
+  }
+}
+
+// Восстановить снэпшот
+export async function restoreSnapshot(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const { snapshotId } = req.body;
+    const server = await prisma.server.findUnique({ where: { id } });
+    const snapshot = await prisma.serverSnapshot.findUnique({ where: { id: snapshotId } });
+    
+    if (!server || !server.proxmoxId || !snapshot) {
+      return res.status(404).json({ error: 'Сервер или снэпшот не найден' });
+    }
+    
+    const result = await proxmoxRollbackSnapshot(server.proxmoxId, snapshot.snapname);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Ошибка восстановления снэпшота' });
+  }
+}
+
+// Удалить снэпшот
+export async function removeSnapshot(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const snapshotId = Number(req.params.snapshotId);
+    const server = await prisma.server.findUnique({ where: { id } });
+    const snapshot = await prisma.serverSnapshot.findUnique({ where: { id: snapshotId } });
+    
+    if (!server || !server.proxmoxId || !snapshot) {
+      return res.status(404).json({ error: 'Сервер или снэпшот не найден' });
+    }
+    
+    const result = await proxmoxDeleteSnapshot(server.proxmoxId, snapshot.snapname);
+    
+    if (result.status === 'success') {
+      await prisma.serverSnapshot.delete({ where: { id: snapshotId } });
+    }
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Ошибка удаления снэпшота' });
+  }
+}
+
+// Получить консоль
+export async function getConsole(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const server = await prisma.server.findUnique({ where: { id } });
+    if (!server || !server.proxmoxId) return res.status(404).json({ error: 'Сервер не найден или нет VMID' });
+    
+    const result = await proxmoxGetConsoleURL(server.proxmoxId);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Ошибка получения консоли' });
+  }
+}
+
+// Получить список серверов пользователя
+export async function getMyServers(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Нет авторизации' });
+    
+    const servers = await prisma.server.findMany({
+      where: { userId },
+      include: {
+        os: true,
+        tariff: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(servers);
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Ошибка получения серверов' });
+  }
+}
+
+// Управление сервером (универсальный endpoint)
+export async function controlServerAction(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const { action } = req.body;
+    
+    if (!['start', 'stop', 'restart', 'suspend', 'resume'].includes(action)) {
+      return res.status(400).json({ error: 'Неверное действие' });
+    }
+    
+    await handleControl(req, res, action);
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Ошибка управления сервером' });
   }
 }

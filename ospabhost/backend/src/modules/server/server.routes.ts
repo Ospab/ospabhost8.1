@@ -7,7 +7,14 @@ import {
   restartServer,
   getServerStatus,
   deleteServer,
-  changeRootPassword
+  changeRootPassword,
+  createSnapshot,
+  getSnapshots,
+  restoreSnapshot,
+  removeSnapshot,
+  getConsole,
+  getMyServers,
+  controlServerAction
 } from './server.controller';
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
@@ -17,7 +24,8 @@ const router = Router();
 
 router.use(authMiddleware);
 
-
+// Получить список моих серверов
+router.get('/my-servers', getMyServers);
 
 // Получить список всех серверов (для фронта)
 router.get('/', async (req, res) => {
@@ -53,23 +61,22 @@ router.get('/:id', async (req, res) => {
 router.get('/:id/status', getServerStatus);
 
 // Получить ссылку на noVNC консоль
-import { getConsoleURL } from './proxmoxApi';
-router.post('/console', async (req, res) => {
-  const { vmid } = req.body;
-  if (!vmid) return res.status(400).json({ status: 'error', message: 'Не указан VMID' });
-  try {
-    const result = await getConsoleURL(Number(vmid));
-    res.json(result);
-  } catch (error: any) {
-    res.status(500).json({ status: 'error', message: error?.message || 'Ошибка получения консоли' });
-  }
-});
+router.get('/:id/console', getConsole);
+
+// Управление сервером (универсальный endpoint)
+router.post('/:id/control', controlServerAction);
+
+// Snapshot management
+router.post('/:id/snapshot', createSnapshot);
+router.get('/:id/snapshots', getSnapshots);
+router.post('/:id/snapshot/restore', restoreSnapshot);
+router.delete('/:id/snapshot/:snapshotId', removeSnapshot);
 
 router.post('/create', createServer);
 router.post('/:id/start', startServer);
 router.post('/:id/stop', stopServer);
 router.post('/:id/restart', restartServer);
 router.delete('/:id', deleteServer);
-router.post('/:id/password', changeRootPassword);
+router.post('/:id/change-password', changeRootPassword);
 
 export default router;

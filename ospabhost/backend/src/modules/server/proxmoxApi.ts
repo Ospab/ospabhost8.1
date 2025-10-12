@@ -342,6 +342,92 @@ export async function getConsoleURL(vmid: number): Promise<{ status: string; url
   }
 }
 
+// Создание снэпшота контейнера
+export async function createSnapshot(vmid: number, snapname: string, description?: string) {
+  try {
+    const response = await axios.post(
+      `${PROXMOX_API_URL}/nodes/${PROXMOX_NODE}/lxc/${vmid}/snapshot`,
+      {
+        snapname,
+        description: description || `Snapshot created at ${new Date().toISOString()}`
+      },
+      { headers: getProxmoxHeaders() }
+    );
+    return {
+      status: 'success',
+      taskId: response.data?.data,
+      snapname
+    };
+  } catch (error: any) {
+    console.error('Ошибка создания снэпшота:', error);
+    return {
+      status: 'error',
+      message: error.response?.data?.errors || error.message
+    };
+  }
+}
+
+// Получение списка снэпшотов
+export async function listSnapshots(vmid: number) {
+  try {
+    const response = await axios.get(
+      `${PROXMOX_API_URL}/nodes/${PROXMOX_NODE}/lxc/${vmid}/snapshot`,
+      { headers: getProxmoxHeaders() }
+    );
+    return {
+      status: 'success',
+      data: response.data?.data || []
+    };
+  } catch (error: any) {
+    console.error('Ошибка получения списка снэпшотов:', error);
+    return {
+      status: 'error',
+      message: error.response?.data?.errors || error.message
+    };
+  }
+}
+
+// Восстановление снэпшота
+export async function rollbackSnapshot(vmid: number, snapname: string) {
+  try {
+    const response = await axios.post(
+      `${PROXMOX_API_URL}/nodes/${PROXMOX_NODE}/lxc/${vmid}/snapshot/${snapname}/rollback`,
+      {},
+      { headers: getProxmoxHeaders() }
+    );
+    return {
+      status: 'success',
+      taskId: response.data?.data
+    };
+  } catch (error: any) {
+    console.error('Ошибка восстановления снэпшота:', error);
+    return {
+      status: 'error',
+      message: error.response?.data?.errors || error.message
+    };
+  }
+}
+
+// Удаление снэпшота
+export async function deleteSnapshot(vmid: number, snapname: string) {
+  try {
+    const response = await axios.delete(
+      `${PROXMOX_API_URL}/nodes/${PROXMOX_NODE}/lxc/${vmid}/snapshot/${snapname}`,
+      { headers: getProxmoxHeaders() }
+    );
+    return {
+      status: 'success',
+      taskId: response.data?.data
+    };
+  } catch (error: any) {
+    console.error('Ошибка удаления снэпшота:', error);
+    return {
+      status: 'error',
+      message: error.response?.data?.errors || error.message
+    };
+  }
+}
+
 // Проверка соединения с Proxmox
 export async function checkProxmoxConnection() {
   try {
