@@ -7,7 +7,12 @@ import {
   restartServer,
   getServerStatus,
   deleteServer,
-  changeRootPassword
+  changeRootPassword,
+  resizeServer,
+  createServerSnapshot,
+  getServerSnapshots,
+  rollbackServerSnapshot,
+  deleteServerSnapshot
 } from './server.controller';
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
@@ -71,5 +76,12 @@ router.post('/:id/stop', stopServer);
 router.post('/:id/restart', restartServer);
 router.delete('/:id', deleteServer);
 router.post('/:id/password', changeRootPassword);
+
+// Новые маршруты для управления конфигурацией и снэпшотами
+router.put('/:id/resize', resizeServer);
+router.post('/:id/snapshots', createServerSnapshot);
+router.get('/:id/snapshots', getServerSnapshots);
+router.post('/:id/snapshots/rollback', rollbackServerSnapshot);
+router.delete('/:id/snapshots', deleteServerSnapshot);
 
 export default router;
