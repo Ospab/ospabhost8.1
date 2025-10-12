@@ -530,5 +530,5 @@ const createSnapshot = async (serverId: number) => {
 
 ---
 
-Last updated: 2024
+Last updated: October 2024
 Version: 8.1
