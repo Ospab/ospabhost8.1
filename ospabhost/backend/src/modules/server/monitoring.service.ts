@@ -1,4 +1,4 @@
-import { Server as SocketIOServer } from 'socket.io';
+import { Server as SocketIOServer, Socket } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
 import { getContainerStats } from './proxmoxApi';
 import { sendResourceAlertEmail } from '../notification/email.service';
@@ -16,7 +16,7 @@ export class MonitoringService {
   }
 
   private setupSocketHandlers() {
-    this.io.on('connection', (socket) => {
+  this.io.on('connection', (socket: Socket) => {
       console.log(`Client connected: ${socket.id}`);
 
       // Подписка на обновления конкретного сервера

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+import io from 'socket.io-client';
+
+type Socket = SocketIOClient.Socket;
 
 const SOCKET_URL = 'http://localhost:5000';
 
@@ -25,7 +27,7 @@ export function useSocket() {
       setConnected(false);
     });
 
-    socketInstance.on('connect_error', (error) => {
+    socketInstance.on('connect_error', (error: Error) => {
       console.error('WebSocket connection error:', error);
     });
 
@@ -39,36 +41,67 @@ export function useSocket() {
   return { socket, connected };
 }
 
+
+// Типы для статистики и алертов
+export interface ServerStats {
+  status?: string;
+  cpu?: number;
+  memory?: {
+    usage: number;
+  };
+  disk?: {
+    usage: number;
+  };
+  network?: {
+    in: number;
+    out: number;
+  };
+}
+
+export interface ServerAlert {
+  type: 'cpu' | 'memory' | 'disk';
+  message: string;
+  level: 'warning' | 'info' | 'critical';
+}
+
+interface ServerStatsEvent {
+  serverId: number;
+  stats: ServerStats;
+}
+
+interface ServerAlertsEvent {
+  serverId: number;
+  alerts: ServerAlert[];
+}
+
 export function useServerStats(serverId: number | null) {
   const { socket, connected } = useSocket();
-  const [stats, setStats] = useState<any>(null);
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [stats, setStats] = useState<ServerStats | null>(null);
+  const [alerts, setAlerts] = useState<ServerAlert[]>([]);
 
   useEffect(() => {
     if (!socket || !connected || !serverId) return;
 
-    // Подписываемся на обновления сервера
     socket.emit('subscribe-server', serverId);
 
-    // Обработчик обновлений статистики
-    socket.on('server-stats', (data: any) => {
+    const handleStats = (data: ServerStatsEvent) => {
       if (data.serverId === serverId) {
         setStats(data.stats);
       }
-    });
-
-    // Обработчик алертов
-    socket.on('server-alerts', (data: any) => {
+    };
+    const handleAlerts = (data: ServerAlertsEvent) => {
       if (data.serverId === serverId) {
         setAlerts(data.alerts);
       }
-    });
+    };
 
-    // Отписываемся при размонтировании
+    socket.on('server-stats', handleStats);
+    socket.on('server-alerts', handleAlerts);
+
     return () => {
       socket.emit('unsubscribe-server', serverId);
-      socket.off('server-stats');
-      socket.off('server-alerts');
+      socket.off('server-stats', handleStats);
+      socket.off('server-alerts', handleAlerts);
     };
   }, [socket, connected, serverId]);
 

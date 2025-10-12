@@ -7,6 +7,8 @@ import Loginpage from './pages/login';
 import Registerpage from './pages/register';
 import TariffsPage from './pages/tariffs';
 import Aboutpage from './pages/about';
+import Privacy from './pages/privacy';
+import Terms from './pages/terms';
 import Privateroute from './components/privateroute';
 import { AuthProvider } from './context/authcontext';
 
@@ -19,6 +21,8 @@ function App() {
           <Route path="/" element={<Pagetempl><Homepage /></Pagetempl>} />
           <Route path="/tariffs" element={<Pagetempl><TariffsPage /></Pagetempl>} />
           <Route path="/about" element={<Pagetempl><Aboutpage /></Pagetempl>} />
+          <Route path="/privacy" element={<Pagetempl><Privacy /></Pagetempl>} />
+          <Route path="/terms" element={<Pagetempl><Terms /></Pagetempl>} />
           <Route path="/login" element={<Pagetempl><Loginpage /></Pagetempl>} />
           <Route path="/register" element={<Pagetempl><Registerpage /></Pagetempl>} />
           

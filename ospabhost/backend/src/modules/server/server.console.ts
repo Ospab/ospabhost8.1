@@ -17,14 +17,26 @@ export function setupConsoleWSS(server: HttpServer) {
       return;
     }
 
-    // Получаем IP и root-пароль из БД (упрощённо)
-    // Здесь можно добавить реальный запрос к Prisma
-  const host = process.env.PROXMOX_IP || process.env.PROXMOX_NODE;
-    const username = 'root';
-    const password = process.env.PROXMOX_ROOT_PASSWORD;
+
+    // Получаем параметры SSH из .env
+    const host = process.env.SSH_HOST || process.env.PROXMOX_IP || process.env.PROXMOX_NODE;
+    const port = process.env.SSH_PORT ? Number(process.env.SSH_PORT) : (process.env.PROXMOX_SSH_PORT ? Number(process.env.PROXMOX_SSH_PORT) : 22);
+    const username = process.env.SSH_USER || 'root';
+    let password = process.env.SSH_PASSWORD || process.env.PROXMOX_ROOT_PASSWORD;
+    if (password && password.startsWith('"') && password.endsWith('"')) {
+      password = password.slice(1, -1);
+    }
+    const privateKeyPath = process.env.SSH_PRIVATE_KEY_PATH;
+    let privateKey: Buffer | undefined = undefined;
+    if (privateKeyPath) {
+      try {
+        privateKey = require('fs').readFileSync(privateKeyPath);
+      } catch (e) {
+        console.error('Ошибка чтения SSH ключа:', e);
+      }
+    }
 
     const ssh = new SSHClient();
-    const port = process.env.PROXMOX_SSH_PORT ? Number(process.env.PROXMOX_SSH_PORT) : 22;
     ssh.on('ready', () => {
       ssh.shell((err: Error | undefined, stream: any) => {
         if (err) {
@@ -48,7 +60,8 @@ export function setupConsoleWSS(server: HttpServer) {
       host,
       port,
       username,
-      password,
+      password: privateKey ? undefined : password,
+      privateKey,
       hostVerifier: (hash: string) => {
         console.log('SSH fingerprint:', hash);
         return true; // всегда принимаем fingerprint
