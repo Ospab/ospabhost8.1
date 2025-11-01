@@ -1,88 +1,172 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+﻿import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
+import { API_URL } from '../../config/api';
 
 interface Server {
   id: number;
   status: string;
   createdAt: string;
-  updatedAt: string;
-  os: { name: string; type: string };
-  tariff: { name: string; price: number };
+  ipAddress: string | null;
+  tariff: {
+    name: string;
+    price: number;
+  };
+  os: {
+    name: string;
+  };
+  nextPaymentDate: string | null;
+  autoRenew: boolean;
 }
 
 const Servers: React.FC = () => {
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchServers = async () => {
-      try {
-  const token = localStorage.getItem('access_token');
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const res = await axios.get('https://ospab.host:5000/api/server', { headers });
-        console.log('Ответ API серверов:', res.data);
-        // Защита от получения HTML вместо JSON
-        if (typeof res.data === 'string' && res.data.startsWith('<!doctype html')) {
-          setError('Ошибка соединения с backend: получен HTML вместо JSON. Проверьте адрес и порт.');
-          setServers([]);
-        } else if (Array.isArray(res.data)) {
-          setServers(res.data);
-        } else {
-          setError('Некорректный формат данных серверов');
-          setServers([]);
-        }
-      } catch (err) {
-        console.error('Ошибка загрузки серверов:', err);
-        setError('Ошибка загрузки серверов');
-        setServers([]);
-      }
-      setLoading(false);
-    };
-    fetchServers();
+    loadServers();
   }, []);
 
-  return (
-    <div className="p-8 bg-white rounded-3xl shadow-xl max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-bold text-gray-800">Мои серверы</h2>
+  const loadServers = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('access_token');
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      const response = await axios.get(`${API_URL}/api/auth/me`, { headers });
+      setServers(response.data.user.servers || []);
+      setError(null);
+    } catch (err: any) {
+      console.error('Ошибка загрузки серверов:', err);
+      setError('Не удалось загрузить список серверов');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'running':
+        return 'bg-green-100 text-green-800';
+      case 'stopped':
+        return 'bg-gray-100 text-gray-800';
+      case 'creating':
+        return 'bg-blue-100 text-blue-800';
+      case 'suspended':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'running':
+        return 'Работает';
+      case 'stopped':
+        return 'Остановлен';
+      case 'creating':
+        return 'Создаётся';
+      case 'suspended':
+        return 'Приостановлен';
+      default:
+        return status;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-xl text-gray-600">Загрузка...</div>
       </div>
-      {loading ? (
-        <p className="text-lg text-gray-500">Загрузка...</p>
-      ) : error ? (
-        <div className="text-center">
-          <p className="text-lg text-red-500 mb-4">{error}</p>
-          <button className="bg-ospab-primary text-white px-6 py-3 rounded-full font-bold hover:bg-ospab-primary-dark transition" onClick={() => window.location.reload()}>Перезагрузить страницу</button>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Мои серверы</h1>
+        <Link
+          to="/dashboard/checkout"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+        >
+          + Купить сервер
+        </Link>
+      </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-800">{error}</p>
         </div>
-      ) : servers.length === 0 ? (
-        <div className="text-center">
-          <p className="text-lg text-gray-500 mb-4">У вас пока нет активных серверов.</p>
-          <a href="/tariffs" className="inline-block bg-ospab-primary text-white px-6 py-3 rounded-full font-bold hover:bg-ospab-primary-dark transition">Посмотреть тарифы</a>
+      )}
+
+      {servers.length === 0 ? (
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <div className="text-gray-400 text-6xl mb-4">🖥️</div>
+          <h2 className="text-2xl font-semibold text-gray-700 mb-2">
+            У вас пока нет серверов
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Купите свой первый сервер, чтобы начать работу
+          </p>
+          <Link
+            to="/dashboard/checkout"
+            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            Выбрать тариф
+          </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {servers.map(server => (
-            <div key={server.id} className="bg-white p-8 rounded-2xl shadow-xl flex flex-col gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">{server.tariff.name}</h2>
-                <p className="text-lg text-gray-600">ОС: {server.os.name} ({server.os.type})</p>
-                <p className="text-lg text-gray-600">Статус: <span className="font-bold">{server.status}</span></p>
-                <p className="text-sm text-gray-400">Создан: {new Date(server.createdAt).toLocaleString()}</p>
-                <p className="text-sm text-gray-400">Обновлён: {new Date(server.updatedAt).toLocaleString()}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {servers.map((server) => (
+            <div
+              key={server.id}
+              className="bg-white rounded-lg shadow hover:shadow-lg transition p-6"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-800">
+                    Сервер #{server.id}
+                  </h3>
+                  <span className={`inline-block px-2 py-1 rounded text-xs font-medium mt-2 ${getStatusColor(server.status)}`}>
+                    {getStatusText(server.status)}
+                  </span>
+                </div>
               </div>
-              <div>
-                <Link
-                  to={`/dashboard/server/${server.id}`}
-                  className="bg-ospab-primary text-white px-6 py-3 rounded-full font-bold hover:bg-ospab-primary-dark transition"
-                >
-                  Перейти в панель управления
-                </Link>
+
+              <div className="space-y-2 mb-4 text-sm text-gray-600">
+                <p>
+                  <span className="font-medium">Тариф:</span> {server.tariff.name}
+                </p>
+                <p>
+                  <span className="font-medium">ОС:</span> {server.os.name}
+                </p>
+                <p>
+                  <span className="font-medium">IP:</span> {server.ipAddress || 'Н/Д'}
+                </p>
+                {server.nextPaymentDate && (
+                  <p>
+                    <span className="font-medium">След. платёж:</span>{' '}
+                    {new Date(server.nextPaymentDate).toLocaleDateString('ru-RU')}
+                  </p>
+                )}
+                <p>
+                  <span className="font-medium">Автопродление:</span>{' '}
+                  {server.autoRenew ? '✅ Включено' : '❌ Выключено'}
+                </p>
               </div>
+
+              <Link
+                to={`/dashboard/server/${server.id}`}
+                className="block w-full text-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition"
+              >
+                Управление
+              </Link>
             </div>
           ))}
         </div>
-  )}
+      )}
     </div>
   );
 };

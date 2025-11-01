@@ -37,10 +37,14 @@ export async function createServer(req: Request, res: Response) {
 
     // Генерация hostname из email
     let hostname = user.email.split('@')[0];
-    hostname = hostname.replace(/[^a-zA-Z0-9-]/g, '');
-    if (hostname.length < 3) hostname = `user${userId}`;
-    if (hostname.length > 32) hostname = hostname.slice(0, 32);
-    if (/^[0-9-]/.test(hostname)) hostname = `u${hostname}`;
+  // Нормализуем hostname: убираем недопустимые символы, приводим к нижнему регистру
+  hostname = hostname.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+  // Удалим ведущие и завершающие дефисы
+  hostname = hostname.replace(/^-+|-+$/g, '');
+  if (hostname.length < 3) hostname = `user${userId}`;
+  if (hostname.length > 32) hostname = hostname.slice(0, 32);
+  // Если начинается с цифры или дефиса — префикс
+  if (/^[0-9-]/.test(hostname)) hostname = `u${hostname}`;
 
     // Создаём контейнер в Proxmox
     const result = await createLXContainer({
@@ -52,21 +56,33 @@ export async function createServer(req: Request, res: Response) {
     if (result.status !== 'success') {
       // Возвращаем деньги обратно, если не удалось создать
       await prisma.user.update({ where: { id: userId }, data: { balance: { increment: tariff.price } } });
+      
       // Логируем полный текст ошибки в файл
       const fs = require('fs');
-      const logMsg = `[${new Date().toISOString()}] Ошибка Proxmox: ${JSON.stringify(result, null, 2)}\n`;
+      const errorMsg = result.message || JSON.stringify(result);
+      const isSocketError = errorMsg.includes('ECONNRESET') || errorMsg.includes('socket hang up');
+      const logMsg = `[${new Date().toISOString()}] Ошибка Proxmox при создании контейнера (userId=${userId}, hostname=${hostname}, vmid=${result.vmid || 'unknown'}): ${errorMsg}${isSocketError ? ' [SOCKET_ERROR - возможно таймаут]' : ''}\n`;
+      
       fs.appendFile('proxmox-errors.log', logMsg, (err: NodeJS.ErrnoException | null) => {
         if (err) console.error('Ошибка записи лога:', err);
       });
-      console.error('Ошибка Proxmox:', result.message);
+      
+      console.error('Ошибка Proxmox при создании контейнера:', result);
+      
       return res.status(500).json({
         error: 'Ошибка создания сервера в Proxmox',
-        details: result.message,
+        details: isSocketError 
+          ? 'Сервер Proxmox не ответил вовремя. Пожалуйста, попробуйте позже.' 
+          : result.message,
         fullError: result
       });
     }
 
     // Сохраняем сервер в БД, статус всегда 'running' после покупки
+    // Устанавливаем дату следующего платежа через 30 дней
+    const nextPaymentDate = new Date();
+    nextPaymentDate.setDate(nextPaymentDate.getDate() + 30);
+
     const server = await prisma.server.create({
       data: {
         userId,
@@ -76,8 +92,23 @@ export async function createServer(req: Request, res: Response) {
         proxmoxId: Number(result.vmid),
         ipAddress: result.ipAddress,
         rootPassword: result.rootPassword,
+        nextPaymentDate,
+        autoRenew: true
       }
     });
+
+    // Создаём первую транзакцию о покупке
+    await prisma.transaction.create({
+      data: {
+        userId,
+        amount: -tariff.price,
+        type: 'withdrawal',
+        description: `Покупка сервера #${server.id}`,
+        balanceBefore: user.balance,
+        balanceAfter: user.balance - tariff.price
+      }
+    });
+
     res.json(server);
   } catch (error: any) {
     console.error('Ошибка покупки сервера:', error);
@@ -89,7 +120,20 @@ export async function createServer(req: Request, res: Response) {
 export async function getServerStatus(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
-    const server = await prisma.server.findUnique({ where: { id } });
+    const server = await prisma.server.findUnique({ 
+      where: { id },
+      include: {
+        tariff: true,
+        os: true,
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+          }
+        }
+      }
+    });
     if (!server) return res.status(404).json({ error: 'Сервер не найден' });
     if (!server.proxmoxId) return res.status(400).json({ error: 'Нет VMID Proxmox' });
     const stats = await getContainerStats(server.proxmoxId);
@@ -197,11 +241,13 @@ export async function deleteServer(req: Request, res: Response) {
     const id = Number(req.params.id);
     const server = await prisma.server.findUnique({ where: { id } });
     if (!server || !server.proxmoxId) return res.status(404).json({ error: 'Сервер не найден или нет VMID' });
+    
     // Удаляем контейнер в Proxmox
     const proxmoxResult = await deleteContainer(server.proxmoxId);
     if (proxmoxResult.status !== 'success') {
       return res.status(500).json({ error: 'Ошибка удаления контейнера в Proxmox', details: proxmoxResult });
     }
+
     await prisma.server.delete({ where: { id } });
     res.json({ status: 'deleted' });
   } catch (error: any) {
@@ -238,7 +284,10 @@ export async function resizeServer(req: Request, res: Response) {
     const config: any = {};
     if (cores) config.cores = Number(cores);
     if (memory) config.memory = Number(memory);
-    if (disk) config.rootfs = `local:${Number(disk)}`;
+    if (disk) {
+      const vmStorage = process.env.PROXMOX_VM_STORAGE || 'local';
+      config.rootfs = `${vmStorage}:${Number(disk)}`;
+    }
     
     const result = await resizeContainer(server.proxmoxId, config);
     res.json(result);

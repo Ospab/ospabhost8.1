@@ -17,26 +17,24 @@ import CheckVerification from './checkverification';
 import TicketResponse from './ticketresponse';
 import Checkout from './checkout';
 import TariffsPage from '../tariffs';
+import AdminPanel from './admin';
 
 const Dashboard = () => {
   const [userData, setUserData] = useState<import('./types').UserData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useContext(AuthContext);
 
-  // Определяем активную вкладку из URL
-  const getActiveTab = () => {
-    const path = location.pathname.split('/dashboard/')[1] || '';
-    return path === '' ? 'summary' : path;
-  };
-
-  const [activeTab, setActiveTab] = useState(getActiveTab());
+  const [activeTab, setActiveTab] = useState('summary');
 
   // Обновляем активную вкладку при изменении URL
   useEffect(() => {
-    setActiveTab(getActiveTab());
-  }, [location]);
+    const path = location.pathname.split('/dashboard/')[1] || '';
+    const tab = path === '' ? 'summary' : path.split('/')[0];
+    setActiveTab(tab);
+  }, [location.pathname]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -102,6 +100,7 @@ const Dashboard = () => {
   }, []);
 
   const isOperator = userData?.user?.operator === 1;
+  const isAdmin = userData?.user?.isAdmin === true;
 
   if (loading) {
     return (
@@ -124,30 +123,61 @@ const Dashboard = () => {
     { key: 'checkverification', label: 'Проверка чеков', to: '/dashboard/checkverification' },
     { key: 'ticketresponse', label: 'Ответы на тикеты', to: '/dashboard/ticketresponse' },
   ];
+  
+  const superAdminTabs = [
+    { key: 'admin', label: '👑 Админ-панель', to: '/dashboard/admin' },
+  ];
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <div className="w-64 bg-white shadow-xl flex flex-col">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg"
+      >
+        <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {isMobileMenuOpen ? (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          )}
+        </svg>
+      </button>
+
+      {/* Sidebar - теперь адаптивный */}
+      <div className={`
+        fixed lg:static inset-y-0 left-0 z-40
+        w-64 bg-white shadow-xl flex flex-col
+        transform transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800">
+          <h2 className="text-xl font-bold text-gray-800 break-words">
             Привет, {userData?.user?.username || 'Гость'}!
           </h2>
-          {isOperator && (
-            <span className="inline-block px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full mt-1">
-              Оператор
-            </span>
-          )}
+          <div className="flex gap-2 mt-2">
+            {isOperator && (
+              <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
+                Оператор
+              </span>
+            )}
+            {isAdmin && (
+              <span className="inline-block px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full">
+                👑 Супер Админ
+              </span>
+            )}
+          </div>
           <div className="mt-2 text-sm text-gray-600">
             Баланс: <span className="font-semibold text-ospab-primary">₽{userData?.balance ?? 0}</span>
           </div>
         </div>
-        <nav className="flex-1 p-6">
+        <nav className="flex-1 p-6 overflow-y-auto">
           <div className="space-y-1">
             {tabs.map(tab => (
               <Link
                 key={tab.key}
                 to={tab.to}
+                onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center py-3 px-4 rounded-xl font-semibold transition-colors duration-200 ${
                   activeTab === tab.key ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
                 }`}
@@ -166,8 +196,30 @@ const Dashboard = () => {
                   <Link
                     key={tab.key}
                     to={tab.to}
+                    onClick={() => setIsMobileMenuOpen(false)}
                     className={`flex items-center py-3 px-4 rounded-xl font-semibold transition-colors duration-200 ${
                       activeTab === tab.key ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {tab.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+          {isAdmin && (
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <p className="text-xs font-semibold text-red-500 uppercase tracking-wider mb-3 px-4">
+                Супер Админ
+              </p>
+              <div className="space-y-1">
+                {superAdminTabs.map(tab => (
+                  <Link
+                    key={tab.key}
+                    to={tab.to}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center py-3 px-4 rounded-xl font-semibold transition-colors duration-200 ${
+                      activeTab === tab.key ? 'bg-red-600 text-white shadow-lg' : 'text-red-600 hover:bg-red-50'
                     }`}
                   >
                     {tab.label}
@@ -183,13 +235,21 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Overlay для мобильного меню */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        <div className="bg-white border-b border-gray-200 px-8 py-4">
-          <h1 className="text-2xl font-bold text-gray-900 capitalize">
+      <div className="flex-1 flex flex-col w-full lg:w-auto">
+        <div className="bg-white border-b border-gray-200 px-4 lg:px-8 py-4 pt-16 lg:pt-4">
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-900 capitalize break-words">
             {tabs.concat(adminTabs).find(t => t.key === activeTab)?.label || 'Панель управления'}
           </h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-xs lg:text-sm text-gray-600 mt-1">
             {new Date().toLocaleDateString('ru-RU', {
               weekday: 'long',
               year: 'numeric',
@@ -198,17 +258,12 @@ const Dashboard = () => {
             })}
           </p>
         </div>
-        <div className="flex-1 p-8 pt-12">
-          {activeTab === 'summary' && (
-            <div className="border-4 border-red-500 bg-red-100 text-red-900 font-bold text-lg rounded-2xl shadow-lg p-6 mb-8 text-center animate-pulse">
-              ⚠️ Управление серверами временно невозможно — сайт ещё в разработке!
-            </div>
-          )}
+        <div className="flex-1 p-4 lg:p-8 pt-6 lg:pt-12 overflow-x-hidden">
           <Routes>
             <Route path="/" element={<Summary userData={userData ?? { user: { username: '', operator: 0 }, balance: 0, servers: [], tickets: [] }} />} />
             <Route path="servers" element={<Servers />} />
             <Route path="server/:id" element={<ServerPanel />} />
-            <Route path="checkout" element={<Checkout onSuccess={() => navigate('/dashboard/servers')} />} />
+            <Route path="checkout" element={<Checkout onSuccess={() => navigate('/dashboard')} />} />
             <Route path="tariffs" element={<TariffsPage />} />
             {userData && (
               <Route path="tickets" element={<TicketsPage setUserData={setUserData} />} />
@@ -223,6 +278,9 @@ const Dashboard = () => {
                 <Route path="checkverification" element={<CheckVerification />} />
                 <Route path="ticketresponse" element={<TicketResponse />} />
               </>
+            )}
+            {isAdmin && (
+              <Route path="admin" element={<AdminPanel />} />
             )}
           </Routes>
         </div>

@@ -1,6 +1,7 @@
 export interface User {
   username: string;
   operator: number;
+  isAdmin?: boolean;
 }
 
 export interface Ticket {

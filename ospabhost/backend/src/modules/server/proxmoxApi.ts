@@ -17,12 +17,26 @@ export async function changeRootPasswordSSH(vmid: number): Promise<{ status: str
 import axios from 'axios';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import https from 'https';
 dotenv.config();
 
 const PROXMOX_API_URL = process.env.PROXMOX_API_URL;
 const PROXMOX_TOKEN_ID = process.env.PROXMOX_TOKEN_ID;
 const PROXMOX_TOKEN_SECRET = process.env.PROXMOX_TOKEN_SECRET;
 const PROXMOX_NODE = process.env.PROXMOX_NODE || 'proxmox';
+const PROXMOX_VM_STORAGE = process.env.PROXMOX_VM_STORAGE || 'local';
+const PROXMOX_BACKUP_STORAGE = process.env.PROXMOX_BACKUP_STORAGE || 'local';
+const PROXMOX_ISO_STORAGE = process.env.PROXMOX_ISO_STORAGE || 'local';
+const PROXMOX_NETWORK_BRIDGE = process.env.PROXMOX_NETWORK_BRIDGE || 'vmbr0';
+
+// HTTPS Agent с отключением проверки сертификата (для самоподписанного Proxmox)
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false,
+  keepAlive: true,
+  maxSockets: 50,
+  maxFreeSockets: 10,
+  timeout: 60000
+});
 
 function getProxmoxHeaders(): Record<string, string> {
   return {
@@ -46,7 +60,11 @@ export async function getNextVMID(): Promise<number> {
   try {
     const res = await axios.get(
       `${PROXMOX_API_URL}/cluster/nextid`,
-      { headers: getProxmoxHeaders() }
+      { 
+        headers: getProxmoxHeaders(),
+        timeout: 15000, // 15 секунд
+        httpsAgent
+      }
     );
     return res.data.data || Math.floor(100 + Math.random() * 899);
   } catch (error) {
@@ -59,16 +77,27 @@ export async function getNextVMID(): Promise<number> {
 export interface CreateContainerParams {
   os: { template: string; type: string };
   tariff: { name: string; price: number; description?: string };
-  user: { id: number; username: string };
+  user: { id: number; username: string; email?: string };
   hostname?: string;
 }
 
 export async function createLXContainer({ os, tariff, user }: CreateContainerParams) {
+  let vmid: number = 0;
+  let hostname: string = '';
+  
   try {
-  const vmid = await getNextVMID();
-  const rootPassword = generateSecurePassword();
-  // Используем hostname из параметров, если есть
-  const hostname = arguments[0].hostname || `user${user.id}-${tariff.name.toLowerCase().replace(/\s/g, '-')}`;
+    vmid = await getNextVMID();
+    const rootPassword = generateSecurePassword();
+    // Используем hostname из параметров, если есть
+    hostname = arguments[0].hostname;
+    if (!hostname) {
+      if (user.email) {
+        const emailName = user.email.split('@')[0];
+        hostname = `${emailName}-${vmid}`;
+      } else {
+        hostname = `user${user.id}-${vmid}`;
+      }
+    }
     
     // Определяем ресурсы по названию тарифа (парсим описание)
     const description = tariff.description || '1 ядро, 1ГБ RAM, 20ГБ SSD';
@@ -83,8 +112,8 @@ export async function createLXContainer({ os, tariff, user }: CreateContainerPar
       ostemplate: os.template,
       cores,
       memory,
-      rootfs: `local:${diskSize}`,
-      net0: 'name=eth0,bridge=vmbr0,ip=dhcp',
+      rootfs: `${PROXMOX_VM_STORAGE}:${diskSize}`,
+      net0: `name=eth0,bridge=${PROXMOX_NETWORK_BRIDGE},ip=dhcp`,
       unprivileged: 1,
       start: 1, // Автостарт после создания
       protection: 0,
@@ -94,11 +123,33 @@ export async function createLXContainer({ os, tariff, user }: CreateContainerPar
 
     console.log('Создание LXC контейнера с параметрами:', containerConfig);
 
+    // Валидация перед отправкой
+    if (!containerConfig.ostemplate) {
+      throw new Error('OS template не задан');
+    }
+    if (containerConfig.cores < 1 || containerConfig.cores > 32) {
+      throw new Error(`Cores должно быть от 1 до 32, получено: ${containerConfig.cores}`);
+    }
+    if (containerConfig.memory < 512 || containerConfig.memory > 65536) {
+      throw new Error(`Memory должно быть от 512 до 65536 MB, получено: ${containerConfig.memory}`);
+    }
+
+    // Детальное логирование перед отправкой
+    console.log('URL Proxmox:', `${PROXMOX_API_URL}/nodes/${PROXMOX_NODE}/lxc`);
+    console.log('Параметры контейнера (JSON):', JSON.stringify(containerConfig, null, 2));
+    console.log('Storage для VM:', PROXMOX_VM_STORAGE);
+    
     const response = await axios.post(
       `${PROXMOX_API_URL}/nodes/${PROXMOX_NODE}/lxc`,
       containerConfig,
-      { headers: getProxmoxHeaders() }
+      { 
+        headers: getProxmoxHeaders(),
+        timeout: 120000, // 2 минуты для создания контейнера
+        httpsAgent
+      }
     );
+    
+    console.log('Ответ от Proxmox (создание):', response.status, response.data);
 
     if (response.data?.data) {
       // Polling статуса контейнера до running или timeout
@@ -129,7 +180,10 @@ async function getContainerStatus(vmid: number): Promise<{ status: string }> {
   try {
     const res = await axios.get(
       `${PROXMOX_API_URL}/nodes/${PROXMOX_NODE}/lxc/${vmid}/status/current`,
-      { headers: getProxmoxHeaders() }
+      { 
+        headers: getProxmoxHeaders(),
+        httpsAgent
+      }
     );
     return { status: res.data.data.status };
   } catch (error) {
@@ -139,10 +193,41 @@ async function getContainerStatus(vmid: number): Promise<{ status: string }> {
 
     throw new Error('Не удалось создать контейнер');
   } catch (error: any) {
-    console.error('Ошибка создания LXC контейнера:', error);
+    console.error('❌ ОШИБКА создания LXC контейнера:', error.message);
+    console.error('   Code:', error.code);
+    console.error('   Status:', error.response?.status);
+    console.error('   Response data:', error.response?.data);
+    
+    // Логируем контекст ошибки
+    console.error('   VMID:', vmid);
+    console.error('   Hostname:', hostname);
+    console.error('   Storage используемый:', PROXMOX_VM_STORAGE);
+    console.error('   OS Template:', os.template);
+    
+    // Специальная обработка socket hang up / ECONNRESET
+    const isSocketError = error?.code === 'ECONNRESET' || 
+                          error?.message?.includes('socket hang up') ||
+                          error?.cause?.code === 'ECONNRESET';
+    
+    if (isSocketError) {
+      console.error('\n⚠️ SOCKET HANG UP DETECTED!');
+      console.error('   Возможные причины:');
+      console.error('   1. Storage "' + PROXMOX_VM_STORAGE + '" не существует на Proxmox');
+      console.error('   2. API токен неверный или истёк');
+      console.error('   3. Proxmox перегружена или недоступна');
+      console.error('   4. Firewall блокирует соединение\n');
+    }
+    
+    const errorMessage = isSocketError 
+      ? `Proxmox не ответил вовремя. Storage: ${PROXMOX_VM_STORAGE}. Проверьте доступность сервера и корректность конфигурации.`
+      : error.response?.data?.errors || error.message;
+    
     return {
       status: 'error',
-      message: error.response?.data?.errors || error.message
+      message: errorMessage,
+      code: error?.code || error?.response?.status,
+      isSocketError,
+      storage: PROXMOX_VM_STORAGE
     };
   }
 }
@@ -154,18 +239,34 @@ export async function getContainerIP(vmid: number): Promise<string | null> {
     
     const response = await axios.get(
       `${PROXMOX_API_URL}/nodes/${PROXMOX_NODE}/lxc/${vmid}/interfaces`,
-      { headers: getProxmoxHeaders() }
+      { 
+        headers: getProxmoxHeaders(),
+        httpsAgent
+      }
     );
 
     const interfaces = response.data?.data;
     if (interfaces && interfaces.length > 0) {
+      // Сначала ищем локальный IP
       for (const iface of interfaces) {
         if (iface.inet && iface.inet !== '127.0.0.1') {
-          return iface.inet.split('/')[0]; // Убираем маску подсети
+          const ip = iface.inet.split('/')[0];
+          if (
+            ip.startsWith('10.') ||
+            ip.startsWith('192.168.') ||
+            (/^172\.(1[6-9]|2[0-9]|3[01])\./.test(ip))
+          ) {
+            return ip;
+          }
+        }
+      }
+      // Если не нашли локальный, возвращаем первый не-127.0.0.1
+      for (const iface of interfaces) {
+        if (iface.inet && iface.inet !== '127.0.0.1') {
+          return iface.inet.split('/')[0];
         }
       }
     }
-
     return null;
   } catch (error) {
     console.error('Ошибка получения IP:', error);
@@ -540,12 +641,39 @@ export async function listContainers() {
   }
 }
 
+// Получение списка доступных storage pools на узле
+export async function getNodeStorages(node: string = PROXMOX_NODE) {
+  try {
+    const response = await axios.get(
+      `${PROXMOX_API_URL}/nodes/${node}/storage`,
+      { 
+        headers: getProxmoxHeaders(),
+        timeout: 15000,
+        httpsAgent
+      }
+    );
+    return {
+      status: 'success',
+      data: response.data?.data || []
+    };
+  } catch (error: any) {
+    console.error('Ошибка получения storage:', error.message);
+    return {
+      status: 'error',
+      message: error.response?.data?.errors || error.message
+    };
+  }
+}
+
 // Проверка соединения с Proxmox
 export async function checkProxmoxConnection() {
   try {
     const response = await axios.get(
       `${PROXMOX_API_URL}/version`,
-      { headers: getProxmoxHeaders() }
+      { 
+        headers: getProxmoxHeaders(),
+        httpsAgent
+      }
     );
     
     if (response.data?.data) {
@@ -565,3 +693,17 @@ export async function checkProxmoxConnection() {
     };
   }
 }
+
+// Получение конфигурации storage через файл (обходим API если он недоступен)
+export async function getStorageConfig(): Promise<{
+  configured: string;
+  available: string[];
+  note: string;
+}> {
+  return {
+    configured: PROXMOX_VM_STORAGE,
+    available: ['local', 'local-lvm', 'vm-storage'],
+    note: `Текущее использование: ${PROXMOX_VM_STORAGE}. Если хранилище недоступно или socket hang up, проверьте что это имя существует в Proxmox (pvesm status)`
+  };
+}
+

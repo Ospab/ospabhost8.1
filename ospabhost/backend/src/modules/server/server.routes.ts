@@ -14,6 +14,7 @@ import {
   rollbackServerSnapshot,
   deleteServerSnapshot
 } from './server.controller';
+import { getStorageConfig, getNodeStorages, checkProxmoxConnection } from './proxmoxApi';
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
@@ -83,5 +84,102 @@ router.post('/:id/snapshots', createServerSnapshot);
 router.get('/:id/snapshots', getServerSnapshots);
 router.post('/:id/snapshots/rollback', rollbackServerSnapshot);
 router.delete('/:id/snapshots', deleteServerSnapshot);
+import { getContainerStats } from './proxmoxApi';
+import { getContainerLogs, getContainerEvents } from './server.logs';
+
+// Диагностика: проверить конфигурацию storage
+router.get('/admin/diagnostic/storage', async (req, res) => {
+  try {
+    const storageConfig = await getStorageConfig();
+    
+    res.json({
+      configured_storage: storageConfig.configured,
+      note: storageConfig.note,
+      instruction: 'Если ошибка socket hang up, проверьте что PROXMOX_VM_STORAGE установлен правильно в .env'
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Диагностика: проверить соединение с Proxmox
+router.get('/admin/diagnostic/proxmox', async (req, res) => {
+  try {
+    const connectionStatus = await checkProxmoxConnection();
+    const storages = await getNodeStorages();
+    
+    res.json({
+      proxmox_connection: connectionStatus,
+      available_storages: storages.data || [],
+      current_storage_config: process.env.PROXMOX_VM_STORAGE || 'не установлена',
+      note: 'Если ошибка в available_storages, проверьте права API токена'
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Получить графики нагрузок сервера (CPU, RAM, сеть)
+router.get('/:id/stats', async (req, res) => {
+  const id = Number(req.params.id);
+  // Проверка прав пользователя (только свои сервера)
+  const userId = req.user?.id;
+  const server = await prisma.server.findUnique({ where: { id } });
+  if (!server || server.userId !== userId) {
+    return res.status(404).json({ error: 'Сервер не найден или нет доступа' });
+  }
+  try {
+    if (!server.proxmoxId && server.proxmoxId !== 0) {
+      return res.status(400).json({ error: 'proxmoxId не задан для сервера' });
+    }
+    const stats = await getContainerStats(Number(server.proxmoxId));
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка получения статистики', details: err });
+  }
+});
+
+// Получить логи сервера
+router.get('/:id/logs', async (req, res) => {
+  const id = Number(req.params.id);
+  const lines = req.query.lines ? Number(req.query.lines) : 100;
+  
+  const userId = req.user?.id;
+  const server = await prisma.server.findUnique({ where: { id } });
+  if (!server || server.userId !== userId) {
+    return res.status(404).json({ error: 'Сервер не найден или нет доступа' });
+  }
+  
+  try {
+    if (!server.proxmoxId && server.proxmoxId !== 0) {
+      return res.status(400).json({ error: 'proxmoxId не задан для сервера' });
+    }
+    const logs = await getContainerLogs(Number(server.proxmoxId), lines);
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка получения логов', details: err });
+  }
+});
+
+// Получить события/историю действий сервера
+router.get('/:id/events', async (req, res) => {
+  const id = Number(req.params.id);
+  
+  const userId = req.user?.id;
+  const server = await prisma.server.findUnique({ where: { id } });
+  if (!server || server.userId !== userId) {
+    return res.status(404).json({ error: 'Сервер не найден или нет доступа' });
+  }
+  
+  try {
+    if (!server.proxmoxId && server.proxmoxId !== 0) {
+      return res.status(400).json({ error: 'proxmoxId не задан для сервера' });
+    }
+    const events = await getContainerEvents(Number(server.proxmoxId));
+    res.json(events);
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка получения событий', details: err });
+  }
+});
 
 export default router;

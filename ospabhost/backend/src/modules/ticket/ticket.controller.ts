@@ -1,21 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
 
-
 const prisma = new PrismaClient();
-
-// Расширяем тип Request для user
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: number;
-        operator?: number;
-        // можно добавить другие поля при необходимости
-      };
-    }
-  }
-}
 
 // Создать тикет
 export async function createTicket(req: Request, res: Response) {

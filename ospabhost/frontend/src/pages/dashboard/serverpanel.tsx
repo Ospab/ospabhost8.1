@@ -1,342 +1,374 @@
+﻿import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { API_URL } from '../../config/api';
+import { Modal } from '../../components/Modal';
+import { useToast } from '../../components/Toast';
 
-import React, { useEffect, useState } from 'react';
-import ServerConsole from '../../components/ServerConsole';
-import { useParams } from 'react-router-dom';
-import axios, { AxiosError } from 'axios';
-
-// Типы
-interface Server {
+interface ServerData {
   id: number;
   status: string;
+  ipAddress: string | null;
+  rootPassword: string | null;
   createdAt: string;
-  updatedAt: string;
-  os: { name: string; type: string };
-  tariff: { name: string; price: number };
-  ip?: string;
-  rootPassword?: string;
-}
-
-interface ServerStats {
-  data?: {
-    cpu?: number;
-    memory?: { usage?: number };
+  tariff: {
+    name: string;
+    price: number;
+    description: string;
+  };
+  os: {
+    name: string;
+    type: string;
+  };
+  nextPaymentDate: string | null;
+  autoRenew: boolean;
+  stats?: {
+    data?: {
+      cpu: number;
+      memory: {
+        usage: number;
+      };
+      disk: {
+        usage: number;
+      };
+      status: string;
+    };
   };
 }
-
-// ...existing code...
-
-// ConsoleSection больше не нужен
-
-const TABS = [
-  { key: 'overview', label: 'Обзор' },
-  { key: 'console', label: 'Консоль' },
-  { key: 'stats', label: 'Статистика' },
-  { key: 'manage', label: 'Управление' },
-  { key: 'security', label: 'Безопасность' },
-  { key: 'network', label: 'Сеть' },
-  { key: 'backups', label: 'Бэкапы' },
-  { key: 'monitoring', label: 'Мониторинг' },
-  { key: 'logs', label: 'Логи' },
-];
 
 const ServerPanel: React.FC = () => {
-  const { id } = useParams();
-  const [server, setServer] = useState<Server | null>(null);
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { addToast } = useToast();
+  const [server, setServer] = useState<ServerData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [activeAction, setActiveAction] = useState<null | 'start' | 'stop' | 'restart'>(null);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [newRoot, setNewRoot] = useState<string | null>(null);
-  const [showRoot, setShowRoot] = useState(false);
-  // overlay больше не нужен
-  const [stats, setStats] = useState<ServerStats | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // Модальные окна
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  useEffect(() => {
-    const fetchServer = async () => {
-      try {
-        const token = localStorage.getItem('access_token');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const res = await axios.get(`https://ospab.host:5000/api/server/${id}`, { headers });
-        setServer(res.data);
-        // Получаем статистику
-  const statsRes = await axios.get(`https://ospab.host:5000/api/server/${id}/status`, { headers });
-        setStats(statsRes.data.stats);
-      } catch (err) {
-        const error = err as AxiosError;
-        if (error?.response?.status === 404) {
-          setError('Сервер не найден или был удалён.');
-        } else {
-          setError('Ошибка загрузки данных сервера');
-        }
-        console.error('Ошибка загрузки данных сервера:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchServer();
-  }, [id]);
-
-  // Смена root-пароля через backend
-  const handleGenerateRoot = async () => {
+  const loadServer = React.useCallback(async () => {
     try {
-      setError('');
-      setSuccess('');
       const token = localStorage.getItem('access_token');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const res = await axios.post(`https://ospab.host:5000/api/server/${id}/password`, {}, { headers });
-      if (res.data?.status === 'success' && res.data.password) {
-        setNewRoot(res.data.password);
-        setShowRoot(true);
-        setSuccess('Root-пароль успешно изменён!');
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      const response = await axios.get(`${API_URL}/api/server/${id}/status`, { headers });
+      setServer(response.data);
+      setError(null);
+    } catch (err: unknown) {
+      console.error('Ошибка загрузки сервера:', err);
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
+        setError('Сервер не найден');
       } else {
-        setError('Ошибка смены root-пароля');
-        console.error('Ошибка смены root-пароля:', res.data);
+        setError('Не удалось загрузить данные сервера');
       }
-    } catch (err) {
-      setError('Ошибка смены root-пароля');
-      console.error('Ошибка смены root-пароля:', err);
-      const axiosErr = err as AxiosError;
-      if (axiosErr && axiosErr.response) {
-        console.error('Ответ сервера:', axiosErr.response.data);
-      }
-    }
-  };
-
-  // Реальные действия управления сервером
-  const handleAction = async (action: 'start' | 'stop' | 'restart') => {
-    try {
-      setLoading(true);
-      setActiveAction(action);
-      setError('');
-      setSuccess('');
-      const token = localStorage.getItem('access_token');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const res = await axios.post(`https://ospab.host:5000/api/server/${id}/${action}`, {}, { headers });
-      if (res.data?.status === 'success' || res.data?.message === 'Статус сервера изменён успешно') {
-        // Обновить статус сервера и статистику после действия
-  const updated = await axios.get(`https://ospab.host:5000/api/server/${id}`, { headers });
-        setServer(updated.data);
-  const statsRes = await axios.get(`https://ospab.host:5000/api/server/${id}/status`, { headers });
-        setStats(statsRes.data.stats);
-        setSuccess('Действие выполнено успешно!');
-      } else {
-        setError(`Ошибка: ${res.data?.message || 'Не удалось выполнить действие'}`);
-      }
-    } catch (err) {
-      setError('Ошибка управления сервером');
-      console.error('Ошибка управления сервером:', err);
     } finally {
       setLoading(false);
-      setActiveAction(null);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadServer();
+    const interval = setInterval(loadServer, 10000); // Обновляем каждые 10 секунд
+    return () => clearInterval(interval);
+  }, [loadServer]);
+
+  const handleAction = async (action: 'start' | 'stop' | 'restart') => {
+    try {
+      setActionLoading(true);
+      const token = localStorage.getItem('access_token');
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      await axios.post(`${API_URL}/api/server/${id}/${action}`, {}, { headers });
+      
+      setTimeout(loadServer, 2000); // Обновляем через 2 секунды
+      addToast(`Команда "${action}" отправлена успешно`, 'success');
+    } catch (err) {
+      console.error(`Ошибка выполнения ${action}:`, err);
+      addToast(`Не удалось выполнить команду "${action}"`, 'error');
+    } finally {
+      setActionLoading(false);
     }
   };
 
+  const handlePasswordChange = async () => {
+    setShowPasswordConfirm(false);
+    
+    try {
+      setActionLoading(true);
+      const token = localStorage.getItem('access_token');
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      const response = await axios.post(`${API_URL}/api/server/${id}/password`, {}, { headers });
+      
+      if (response.data.status === 'success') {
+        addToast('Пароль успешно изменён! Новый пароль отображается ниже.', 'success');
+        loadServer();
+      }
+    } catch (err) {
+      console.error('Ошибка смены пароля:', err);
+      addToast('Не удалось сменить пароль', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setShowDeleteConfirm(false);
+    
+    try {
+      setActionLoading(true);
+      const token = localStorage.getItem('access_token');
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      await axios.delete(`${API_URL}/api/server/${id}`, { headers });
+      
+      addToast('Сервер успешно удалён', 'success');
+      navigate('/dashboard/servers');
+    } catch (err) {
+      console.error('Ошибка удаления сервера:', err);
+      addToast('Не удалось удалить сервер', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'running':
+        return 'bg-green-100 text-green-800';
+      case 'stopped':
+        return 'bg-gray-100 text-gray-800';
+      case 'creating':
+        return 'bg-blue-100 text-blue-800';
+      case 'suspended':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'running':
+        return 'Работает';
+      case 'stopped':
+        return 'Остановлен';
+      case 'creating':
+        return 'Создаётся';
+      case 'suspended':
+        return 'Приостановлен';
+      default:
+        return status;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-xl text-gray-600">Загрузка...</div>
+      </div>
+    );
+  }
+
+  if (error || !server) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <p className="text-red-800 text-xl">{error || 'Сервер не найден'}</p>
+          <button
+            onClick={() => navigate('/dashboard/servers')}
+            className="mt-4 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900"
+          >
+            Вернуться к списку серверов
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex flex-col items-center bg-gray-50">
-      <div className="bg-white rounded-3xl shadow-xl p-10 w-full max-w-7xl mt-10 flex flex-row min-h-[700px]">
-        <aside className="w-64 pr-8 border-r border-gray-200 flex flex-col gap-2">
-          <h1 className="text-2xl font-bold text-gray-800 mb-6">Сервер #{server?.id}</h1>
-          {TABS.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`w-full text-left px-5 py-3 rounded-xl font-semibold transition-colors duration-200 mb-1 ${activeTab === tab.key ? 'bg-ospab-primary text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </aside>
-        <main className="flex-1 pl-8">
-          {activeTab === 'overview' && server && (
-            <div className="bg-gradient-to-br from-ospab-primary/80 to-ospab-primary-dark/80 rounded-2xl shadow-lg p-8 flex flex-col items-start w-full max-w-2xl mx-auto">
-              <div className="grid grid-cols-2 gap-4 w-full mb-6">
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm text-gray-700">Статус</span>
-                  <span className={`text-base font-semibold px-3 py-1 rounded-xl ${server.status === 'running' ? 'bg-green-100 text-green-800' : server.status === 'stopped' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'} shadow w-fit`}>{server.status === 'running' ? 'Работает' : server.status === 'stopped' ? 'Остановлен' : server.status}</span>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm text-gray-700">IP-адрес</span>
-                  <span className="font-mono text-base text-gray-900">{server.ip || '—'}</span>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm text-gray-700">Операционная система</span>
-                  <span className="text-gray-900">{server.os.name} <span className="text-xs text-gray-500">({server.os.type})</span></span>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm text-gray-700">Тариф</span>
-                  <span className="text-base font-semibold px-3 py-1 rounded-xl bg-ospab-primary/10 text-ospab-primary shadow w-fit">{server.tariff.name}</span>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm text-gray-700">Цена</span>
-                  <span className="font-mono text-base text-gray-900">{server.tariff.price}₽</span>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm text-gray-700">Root-пароль</span>
-                  {(() => {
-                    const created = new Date(server.createdAt);
-                    const now = new Date();
-                    const diffMin = (now.getTime() - created.getTime()) / 1000 / 60;
-                    if (server.rootPassword && diffMin <= 30) {
-                      return (
-                        <div className="flex items-center gap-2 relative">
-                          <span
-                            className="font-mono text-base bg-gray-100 text-gray-900 px-3 py-1 rounded"
-                            style={{ userSelect: showRoot ? 'text' : 'none', WebkitUserSelect: showRoot ? 'text' : 'none' }}
-                          >{showRoot ? server.rootPassword : '************'}</span>
-                          {!showRoot ? (
-                            <button
-                              className="bg-ospab-primary text-white px-2 py-1 rounded text-xs font-bold hover:bg-ospab-primary-dark transition"
-                              onClick={() => setShowRoot(true)}
-                            >Показать</button>
-                          ) : (
-                            <button
-                              className="bg-ospab-primary text-white px-2 py-1 rounded text-xs font-bold hover:bg-ospab-primary-dark transition"
-                              onClick={() => { navigator.clipboard.writeText(server.rootPassword || ''); setShowRoot(false); }}
-                            >Скопировать</button>
-                          )}
-                        </div>
-                      );
-                    } else {
-                      return (
-                        <span className="font-mono text-base text-gray-900">—</span>
-                      );
-                    }
-                  })()}
-                </div>
-              </div>
-              <div className="flex flex-col md:flex-row gap-6 w-full mt-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">📅</span>
-                  <span className="text-sm text-gray-700">Создан:</span>
-                  <span className="font-semibold text-gray-900">{new Date(server.createdAt).toLocaleString()}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">🔄</span>
-                  <span className="text-sm text-gray-700">Обновлён:</span>
-                  <span className="font-semibold text-gray-900">{new Date(server.updatedAt).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'console' && server && (
-            <ServerConsole />
-          )}
-
-          {activeTab === 'stats' && (
-            <div className="bg-gray-100 rounded-xl p-6">
-              <div className="mb-2 font-bold">Графики нагрузки</div>
-              <div className="flex gap-6">
-                <div className="w-1/2 h-32 bg-white rounded-lg shadow-inner flex flex-col items-center justify-center">
-                  <div className="font-bold text-gray-700">CPU</div>
-                  <div className="text-2xl text-ospab-primary">{stats?.data?.cpu ? (stats.data.cpu * 100).toFixed(1) : '—'}%</div>
-                </div>
-                <div className="w-1/2 h-32 bg-white rounded-lg shadow-inner flex flex-col items-center justify-center">
-                  <div className="font-bold text-gray-700">RAM</div>
-                  <div className="text-2xl text-ospab-primary">{stats?.data?.memory?.usage ? stats.data.memory.usage.toFixed(1) : '—'}%</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'manage' && server && (
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-6">
-                <button
-                  className={`bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-full font-bold flex items-center justify-center ${server.status === 'running' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={() => handleAction('start')}
-                  disabled={server.status === 'running' || loading}
-                >
-                  {loading && activeAction === 'start' ? (
-                    <span className="flex items-center gap-2">
-                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                      </svg>
-                      Выполняется...
-                    </span>
-                  ) : 'Запустить'}
-                </button>
-                <button
-                  className={`bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-full font-bold flex items-center justify-center ${server.status !== 'running' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={() => handleAction('restart')}
-                  disabled={server.status !== 'running' || loading}
-                >
-                  {loading && activeAction === 'restart' ? (
-                    <span className="flex items-center gap-2">
-                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                      </svg>
-                      Выполняется...
-                    </span>
-                  ) : 'Перезагрузить'}
-                </button>
-                <button
-                  className={`bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full font-bold flex items-center justify-center ${server.status === 'stopped' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={() => handleAction('stop')}
-                  disabled={server.status === 'stopped' || loading}
-                >
-                  {loading && activeAction === 'stop' ? (
-                    <span className="flex items-center gap-2">
-                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                      </svg>
-                      Выполняется...
-                    </span>
-                  ) : 'Остановить'}
-                </button>
-              </div>
-              {success && (
-                <div className="text-green-600 text-base font-semibold mt-2">{success}</div>
-              )}
-              {error && (
-                <div className="text-red-500 text-base font-semibold mt-2">{error}</div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'network' && (
-            <div className="bg-gray-100 rounded-xl p-6 text-center text-gray-500">Сеть: здесь будет управление сетевыми настройками</div>
-          )}
-          {activeTab === 'backups' && (
-            <div className="bg-gray-100 rounded-xl p-6 text-center text-gray-500">Бэкапы: здесь будет управление резервными копиями</div>
-          )}
-          {activeTab === 'monitoring' && (
-            <div className="bg-gray-100 rounded-xl p-6 text-center text-gray-500">Мониторинг: здесь будет расширенный мониторинг</div>
-          )}
-          {activeTab === 'logs' && (
-            <div className="bg-gray-100 rounded-xl p-6 text-center text-gray-500">Логи: здесь будут логи сервера</div>
-          )}
-          {activeTab === 'security' && server && (
-            <div className="space-y-4">
-              <button className="bg-ospab-primary text-white px-6 py-3 rounded-full font-bold" onClick={handleGenerateRoot}>Сгенерировать новый root-пароль</button>
-              {showRoot && newRoot && (
-                <div className="bg-gray-100 rounded-xl p-6 flex flex-col items-center">
-                  <div className="mb-2 font-bold text-lg">Ваш новый root-пароль:</div>
-                  <div
-                    className="font-mono text-xl bg-white px-6 py-3 rounded-lg shadow-inner"
-                    style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-                  >{newRoot.replace(/./g, '*')}</div>
-                  <button
-                    className="bg-ospab-primary text-white px-2 py-1 rounded text-xs font-bold hover:bg-ospab-primary-dark transition mt-2"
-                    onClick={() => setShowRoot(false)}
-                  >Скрыть</button>
-                </div>
-              )}
-              {success && (
-                <div className="text-green-600 text-base font-semibold mt-2">{success}</div>
-              )}
-              {error && (
-                <div className="text-red-500 text-base font-semibold mt-2">{error}</div>
-              )}
-            </div>
-          )}
-        </main>
+    <div className="container mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Сервер #{server.id}</h1>
+          <p className="text-gray-600 mt-1">{server.tariff.name} - {server.os.name}</p>
+        </div>
+        <span className={`px-4 py-2 rounded-lg font-semibold ${getStatusColor(server.status)}`}>
+          {getStatusText(server.status)}
+        </span>
       </div>
+
+      {/* Server Info */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Информация</h2>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">IP адрес:</span>
+              <span className="font-medium">{server.ipAddress || 'Создаётся...'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Root пароль:</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono">
+                  {showPassword ? server.rootPassword : '••••••••'}
+                </span>
+                <button
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Создан:</span>
+              <span>{new Date(server.createdAt).toLocaleString('ru-RU')}</span>
+            </div>
+            {server.nextPaymentDate && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">След. платёж:</span>
+                <span>{new Date(server.nextPaymentDate).toLocaleDateString('ru-RU')}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-gray-600">Автопродление:</span>
+              <span>{server.autoRenew ? '✅ Включено' : '❌ Выключено'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Статистика</h2>
+          {server.stats?.data ? (
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>CPU</span>
+                  <span>{server.stats.data.cpu?.toFixed(1)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full" 
+                    style={{ width: `${server.stats.data.cpu || 0}%` }}
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>RAM</span>
+                  <span>{((server.stats.data.memory?.usage || 0) / 1024 / 1024).toFixed(0)} MB</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-green-600 h-2 rounded-full" 
+                    style={{ width: `${Math.min(((server.stats.data.memory?.usage || 0) / 1024 / 1024 / 1024) * 100, 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-500">Статистика недоступна</p>
+          )}
+        </div>
+      </div>
+
+      {/* Control Buttons */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Управление</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <button
+            onClick={() => handleAction('start')}
+            disabled={actionLoading || server.status === 'running'}
+            className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            ▶️ Запустить
+          </button>
+          <button
+            onClick={() => handleAction('stop')}
+            disabled={actionLoading || server.status === 'stopped'}
+            className="px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            ⏹️ Остановить
+          </button>
+          <button
+            onClick={() => handleAction('restart')}
+            disabled={actionLoading}
+            className="px-4 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            🔄 Перезагрузить
+          </button>
+          <button
+            onClick={() => setShowPasswordConfirm(true)}
+            disabled={actionLoading}
+            className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            🔑 Сменить пароль
+          </button>
+        </div>
+      </div>
+
+      {/* SSH Access */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">SSH Доступ</h2>
+        <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
+          <p>ssh root@{server.ipAddress || 'создаётся...'}</p>
+          <p className="text-gray-400 mt-2">Пароль: {showPassword ? server.rootPassword : '••••••••'}</p>
+        </div>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <h2 className="text-xl font-semibold text-red-800 mb-4">⚠️ Опасная зона</h2>
+        <p className="text-red-700 mb-4">
+          Удаление сервера - необратимое действие. Все данные будут утеряны!
+        </p>
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          disabled={actionLoading}
+          className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+        >
+          🗑️ Удалить сервер
+        </button>
+      </div>
+
+      {/* Модальные окна */}
+      <Modal
+        isOpen={showPasswordConfirm}
+        onClose={() => setShowPasswordConfirm(false)}
+        title="Смена root-пароля"
+        type="warning"
+        onConfirm={handlePasswordChange}
+        confirmText="Да, сменить пароль"
+        cancelText="Отмена"
+      >
+        <p>Вы уверены, что хотите сменить root-пароль для этого сервера?</p>
+        <p className="mt-2 text-sm text-gray-500">
+          Новый пароль будет сгенерирован автоматически и отображён на этой странице.
+        </p>
+      </Modal>
+
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Удаление сервера"
+        type="danger"
+        onConfirm={handleDelete}
+        confirmText="Да, удалить навсегда"
+        cancelText="Отмена"
+      >
+        <p className="font-bold text-red-600 mb-2">ВЫ УВЕРЕНЫ?</p>
+        <p>Это действие необратимо! Сервер будет удалён навсегда.</p>
+        <p className="mt-2 text-sm text-gray-600">
+          Все данные, файлы и настройки будут потеряны без возможности восстановления.
+        </p>
+      </Modal>
     </div>
   );
 };

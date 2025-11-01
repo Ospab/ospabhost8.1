@@ -2,15 +2,29 @@ import type { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import { validateTurnstileToken } from './turnstile.validator';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
 
 export const register = async (req: Request, res: Response) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, turnstileToken } = req.body;
 
   if (!username || !email || !password) {
     return res.status(400).json({ message: 'Все поля обязательны.' });
+  }
+
+  // Валидация Turnstile токена
+  const turnstileValidation = await validateTurnstileToken(
+    turnstileToken,
+    req.ip || req.connection.remoteAddress
+  );
+
+  if (!turnstileValidation.success) {
+    return res.status(400).json({
+      message: turnstileValidation.message || 'Проверка капчи не прошла.',
+      errorCodes: turnstileValidation.errorCodes,
+    });
   }
 
   try {
@@ -38,10 +52,23 @@ export const register = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email, password, turnstileToken } = req.body;
   
   if (!email || !password) {
     return res.status(400).json({ message: 'Необходимо указать email и password.' });
+  }
+
+  // Валидация Turnstile токена
+  const turnstileValidation = await validateTurnstileToken(
+    turnstileToken,
+    req.ip || req.connection.remoteAddress
+  );
+
+  if (!turnstileValidation.success) {
+    return res.status(400).json({
+      message: turnstileValidation.message || 'Проверка капчи не прошла.',
+      errorCodes: turnstileValidation.errorCodes,
+    });
   }
 
   try {
@@ -79,8 +106,30 @@ export const getMe = async (req: Request, res: Response) => {
         email: true,
         createdAt: true,
         operator: true,
+        isAdmin: true,
         balance: true,
-        servers: true,
+        servers: {
+          select: {
+            id: true,
+            status: true,
+            createdAt: true,
+            ipAddress: true,
+            nextPaymentDate: true,
+            autoRenew: true,
+            tariff: {
+              select: {
+                name: true,
+                price: true,
+              },
+            },
+            os: {
+              select: {
+                name: true,
+                type: true,
+              },
+            },
+          },
+        },
         tickets: true,
       },
     });

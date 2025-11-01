@@ -66,6 +66,12 @@ model Server {
   diskUsage   Float?   @default(0)
   networkIn   Float?   @default(0)
   networkOut  Float?   @default(0)
+  
+  // Автоматические платежи
+  nextPaymentDate DateTime? // Дата следующего списания
+  autoRenew       Boolean   @default(true) // Автопродление
+  
+  payments        Payment[]
 
   @@map("server")
 }
@@ -78,12 +84,15 @@ model User {
   createdAt DateTime @default(now())
   plans     Plan[] @relation("UserPlans")
   operator  Int      @default(0)
+  isAdmin   Boolean  @default(false) // Админские права
   tickets   Ticket[] @relation("UserTickets")
   responses Response[] @relation("OperatorResponses")
   checks    Check[]  @relation("UserChecks")
   balance   Float  @default(0)
   servers   Server[]
   notifications Notification[]
+  payments      Payment[]
+  transactions  Transaction[] // История всех транзакций
 
   @@map("user")
 }
@@ -160,4 +169,36 @@ model Notification {
   createdAt DateTime @default(now())
 
 @@map("notification")
+}
+
+// Автоматические платежи за серверы
+model Payment {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  serverId  Int
+  amount    Float
+  status    String   @default("pending") // pending, success, failed
+  type      String   // subscription, manual
+  createdAt DateTime @default(now())
+  processedAt DateTime?
+  user      User     @relation(fields: [userId], references: [id])
+  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@map("payment")
+}
+
+// История всех транзакций (пополнения, списания, возвраты)
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  amount      Float
+  type        String   // deposit (пополнение), withdrawal (списание), refund (возврат)
+  description String
+  balanceBefore Float
+  balanceAfter  Float
+  adminId     Int?     // ID админа, если операция выполнена админом
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@map("transaction")
 }

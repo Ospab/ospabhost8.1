@@ -1,0 +1,24 @@
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /tariffs
+Allow: /login
+Allow: /register
+Allow: /terms
+
+Disallow: /dashboard
+Disallow: /api/
+Disallow: /admin
+Disallow: /private
+
+Sitemap: https://ospab.host/sitemap.xml
+
+# Yandex
+User-agent: Yandexbot
+Allow: /
+Crawl-delay: 0
+
+# Google
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0

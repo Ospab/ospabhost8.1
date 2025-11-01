@@ -1,0 +1,7 @@
+RewriteEngine On
+RewriteBase /
+# Если файл или папка существует — отдать как есть
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+# Иначе — отдать index.html
+RewriteRule ^ index.html [L]

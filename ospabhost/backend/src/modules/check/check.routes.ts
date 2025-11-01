@@ -9,7 +9,14 @@ const router = Router();
 // Настройка Multer для загрузки чеков
 const storage = multer.diskStorage({
 	destination: function (req: Express.Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) {
-		cb(null, path.join(__dirname, '../../../uploads/checks'));
+		const uploadDir = path.join(__dirname, '../../../uploads/checks');
+		// Проверяем и создаём директорию, если её нет
+		try {
+			require('fs').mkdirSync(uploadDir, { recursive: true });
+		} catch (err) {
+			// Игнорируем ошибку, если папка уже существует
+		}
+		cb(null, uploadDir);
 	},
 	filename: function (req: Express.Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) {
 		const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -26,15 +33,15 @@ const allowedMimeTypes = [
 
 const upload = multer({
 	storage,
+	limits: { fileSize: 5 * 1024 * 1024 }, // 5MB лимит
 	fileFilter: (req, file, cb) => {
 		if (allowedMimeTypes.includes(file.mimetype)) {
 			cb(null, true);
-				} else {
-					// Кастомная ошибка для Multer
-					const err: any = new Error('Недопустимый формат файла. Разрешены только изображения: jpg, jpeg, png, gif, webp.');
-					err.code = 'LIMIT_FILE_FORMAT';
-					cb(err, false);
-				}
+		} else {
+			const err: any = new Error('Недопустимый формат файла. Разрешены только изображения: jpg, jpeg, png, gif, webp.');
+			err.code = 'LIMIT_FILE_FORMAT';
+			cb(err, false);
+		}
 	}
 });
 

@@ -2,14 +2,96 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    
+    <!-- Viewport и основные мета теги -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <title>ospab.host - первый хостинг в Великом Новгороде</title>
+    <meta name="theme-color" content="#2563eb" />
+    
+    <!-- SEO мета теги -->
+    <meta name="description" content="ospab.host - облачные решения с надёжной инфраструктурой в Великом Новгороде." />
+    <meta name="keywords" content="хостинг, облачный хостинг, VPS, VDS, виртуальные машины, ВМ, дата-центр, ЦОД, Великий Новгород, ospab, облако, серверы" />
+    <meta name="author" content="ospab.team" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="language" content="Russian" />
+    <meta name="revisit-after" content="7 days" />
+    <meta name="distribution" content="global" />
+    
+    <!-- Open Graph (для социальных сетей) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ospab.host/" />
+    <meta property="og:title" content="ospab.host - Облачный хостинг и виртуальные машины" />
+    <meta property="og:description" content="Облачные решения в Великом Новгороде." />
+    <meta property="og:image" content="https://ospab.host/og-image.jpg" />
+    <meta property="og:site_name" content="ospab.host" />
+    <meta property="og:locale" content="ru_RU" />
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://ospab.host/" />
+    <meta name="twitter:title" content="ospab.host - Облачный хостинг" />
+    <meta name="twitter:description" content="Надёжный облачный хостинг для ваших проектов в Великом Новгороде" />
+    <meta name="twitter:image" content="https://ospab.host/og-image.jpg" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://ospab.host/" />
+    
+    <!-- Preconnect для производительности -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+    
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "ospab.host",
+      "url": "https://ospab.host",
+      "logo": "https://ospab.host/logo.jpg",
+      "description": "Облачные решения в Великом Новгороде.",
+      "sameAs": [
+        "https://github.com/Ospab"
+      ],
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Великий Новгород",
+        "addressRegion": "Новгородская область",
+        "addressCountry": "RU"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "Customer Support",
+        "areaServed": "RU",
+        "availableLanguage": ["ru"]
+      }
+    }
+    </script>
+    
+    <!-- WebSite Schema для поиска -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "ospab.host",
+      "url": "https://ospab.host",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://ospab.host/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <title>ospab.host - облачные решения в Великом Новгороде</title>
   </head>
   <body>
     <div id="root"></div>

@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../../config/api';
 
 interface IUser {
   id: number;
@@ -18,8 +19,6 @@ interface ICheck {
   user?: IUser;
 }
 
-const API_URL = 'https://ospab.host:5000/api/check';
-
 const CheckVerification: React.FC = () => {
   const [checks, setChecks] = useState<ICheck[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -32,7 +31,7 @@ const CheckVerification: React.FC = () => {
       setError('');
       try {
   const token = localStorage.getItem('access_token');
-        const res = await axios.get<ICheck[]>(API_URL, {
+        const res = await axios.get<ICheck[]>(`${API_URL}/api/check`, {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
         });
@@ -51,7 +50,7 @@ const CheckVerification: React.FC = () => {
     setError('');
     try {
   const token = localStorage.getItem('access_token');
-      await axios.post(`${API_URL}/${action}`, { checkId }, {
+      await axios.post(`${API_URL}/api/check/${action}`, { checkId }, {
   headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -61,7 +60,7 @@ const CheckVerification: React.FC = () => {
         try {
           const token = localStorage.getItem('access_token');
           const headers = { Authorization: `Bearer ${token}` };
-          const userRes = await axios.get('https://ospab.host:5000/api/auth/me', { headers });
+          const userRes = await axios.get(`${API_URL}/api/auth/me`, { headers });
           // Глобально обновить userData через типизированное событие (для Dashboard)
           window.dispatchEvent(new CustomEvent<import('./types').UserData>('userDataUpdate', {
             detail: {
@@ -109,8 +108,8 @@ const CheckVerification: React.FC = () => {
                 </div>
               </div>
               <div className="flex flex-col items-center gap-2 md:ml-8">
-                <a href={`https://ospab.host:5000${check.fileUrl}`} target="_blank" rel="noopener noreferrer" className="block mb-2">
-                  <img src={`https://ospab.host:5000${check.fileUrl}`} alt="Чек" className="w-32 h-32 object-contain rounded-xl border" />
+                <a href={`${API_URL}${check.fileUrl}`} target="_blank" rel="noopener noreferrer" className="block mb-2">
+                  <img src={`${API_URL}${check.fileUrl}`} alt="Чек" className="w-32 h-32 object-contain rounded-xl border" />
                 </a>
                 {check.status === 'pending' && (
                   <>

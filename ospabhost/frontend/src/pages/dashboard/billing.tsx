@@ -54,12 +54,12 @@ const Billing = () => {
   };
 
   return (
-    <div className="p-8 bg-white rounded-3xl shadow-xl max-w-2xl mx-auto">
-      <h2 className="text-3xl font-bold text-gray-800 mb-6">Пополнение баланса</h2>
+    <div className="p-4 lg:p-8 bg-white rounded-2xl lg:rounded-3xl shadow-xl max-w-2xl mx-auto">
+      <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 mb-4 lg:mb-6">Пополнение баланса</h2>
       {/* Только QR-код и карта, без реквизитов */}
       {!isPaymentGenerated ? (
         <div>
-          <p className="text-lg text-gray-500 mb-4">
+          <p className="text-base lg:text-lg text-gray-500 mb-4">
             Пополните свой баланс, чтобы оплачивать услуги. Минимальная сумма пополнения: 1 руб.
           </p>
           <div className="mb-4">
@@ -83,7 +83,7 @@ const Billing = () => {
       ) : (
         <div className="text-center">
           <div>
-            <p className="text-lg text-gray-700 mb-4">
+            <p className="text-base lg:text-lg text-gray-700 mb-4">
               Для пополнения баланса переведите <strong>₽{amount}</strong>.
             </p>
             <p className="text-sm text-gray-500 mb-6">
@@ -91,43 +91,43 @@ const Billing = () => {
             </p>
           </div>
           {/* QR-код для оплаты по СБП */}
-          <div className="bg-gray-100 p-6 rounded-2xl inline-block mb-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Оплата по СБП</h3>
+          <div className="bg-gray-100 p-4 lg:p-6 rounded-xl lg:rounded-2xl inline-block mb-6 w-full max-w-md mx-auto">
+            <h3 className="text-lg lg:text-xl font-bold text-gray-800 mb-2">Оплата по СБП</h3>
             <div className="flex justify-center p-4 bg-white rounded-lg">
-              <QRCode value={sbpUrl || 'https://qr.nspk.ru/FAKE-QR-LINK'} size={256} />
+              <QRCode value={sbpUrl || 'https://qr.nspk.ru/FAKE-QR-LINK'} size={Math.min(window.innerWidth - 100, 256)} />
             </div>
-            <p className="mt-4 text-sm text-gray-600">
+            <p className="mt-4 text-xs lg:text-sm text-gray-600">
               Отсканируйте QR-код через мобильное приложение вашего банка.
             </p>
           </div>
           {/* Номер карты с кнопкой копирования */}
-          <div className="bg-gray-100 p-6 rounded-2xl mb-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Оплата по номеру карты</h3>
-            <p className="text-2xl font-bold text-gray-800 select-all">{cardNumber || '0000 0000 0000 0000'}</p>
+          <div className="bg-gray-100 p-4 lg:p-6 rounded-xl lg:rounded-2xl mb-6">
+            <h3 className="text-lg lg:text-xl font-bold text-gray-800 mb-2">Оплата по номеру карты</h3>
+            <p className="text-xl lg:text-2xl font-bold text-gray-800 select-all break-words">{cardNumber || '0000 0000 0000 0000'}</p>
             <button
               onClick={handleCopyCard}
-              className="mt-4 px-4 py-2 rounded-full text-white font-bold transition-colors transform hover:scale-105 bg-gray-500 hover:bg-gray-700"
+              className="mt-4 px-4 py-2 rounded-full text-white font-bold transition-colors transform hover:scale-105 bg-gray-500 hover:bg-gray-700 w-full lg:w-auto"
             >
               Скопировать номер карты
             </button>
             {copyStatus && <p className="mt-2 text-sm text-green-500">{copyStatus}</p>}
           </div>
           {/* Форма загрузки чека и инструкции */}
-          <div className="bg-blue-50 p-6 rounded-2xl border-l-4 border-blue-500 text-left mb-6">
-            <p className="font-bold text-blue-800">Загрузите чек для проверки:</p>
-            <input type="file" accept="image/*,application/pdf" onChange={e => setCheckFile(e.target.files?.[0] || null)} className="mt-2" />
-            <button onClick={handleCheckUpload} disabled={!checkFile || uploadLoading} className="mt-2 bg-blue-500 text-white px-4 py-2 rounded">
+          <div className="bg-blue-50 p-4 lg:p-6 rounded-xl lg:rounded-2xl border-l-4 border-blue-500 text-left mb-6">
+            <p className="font-bold text-blue-800 text-sm lg:text-base">Загрузите чек для проверки:</p>
+            <input type="file" accept="image/*,application/pdf" onChange={e => setCheckFile(e.target.files?.[0] || null)} className="mt-2 text-sm w-full" />
+            <button onClick={handleCheckUpload} disabled={!checkFile || uploadLoading} className="mt-2 bg-blue-500 text-white px-4 py-2 rounded w-full lg:w-auto">
               {uploadLoading ? 'Загрузка...' : 'Отправить чек'}
             </button>
-            {checkStatus && <div className="mt-2 text-green-600">{checkStatus}</div>}
+            {checkStatus && <div className="mt-2 text-green-600 text-sm">{checkStatus}</div>}
           </div>
-          <div className="bg-red-50 p-6 rounded-2xl border-l-4 border-red-500 text-left mb-6">
-            <p className="font-bold text-red-800">Важно:</p>
-            <p className="text-sm text-red-700">
+          <div className="bg-red-50 p-4 lg:p-6 rounded-xl lg:rounded-2xl border-l-4 border-red-500 text-left mb-6">
+            <p className="font-bold text-red-800 text-sm lg:text-base">Важно:</p>
+            <p className="text-xs lg:text-sm text-red-700">
               После оплаты сделайте скриншот или сохраните чек и загрузите его для проверки.
             </p>
           </div>
-          <p className="mt-4 text-gray-600">
+          <p className="mt-4 text-gray-600 text-sm lg:text-base">
             После подтверждения ваш баланс будет пополнен. Ожидайте проверки чека оператором.
           </p>
         </div>
