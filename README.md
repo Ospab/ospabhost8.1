@@ -1,6 +1,6 @@
-# Ospabhost 8.1
+# Ospabhost 8.1 - Server Management Platform
 
-VPS hosting platform with Proxmox VE integration.
+Полнофункциональная платформа управления серверами на базе Proxmox VE с поддержкой LXC контейнеров.
 
 ## 📁 Project Structure
 
